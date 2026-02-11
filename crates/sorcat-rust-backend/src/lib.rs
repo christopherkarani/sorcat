@@ -717,6 +717,9 @@ fn render_reconstructed_function_body_lines(
     let mut stack = Vec::<String>::new();
     let mut local_bindings = BTreeMap::<u32, String>::new();
     let mut global_bindings = BTreeMap::<u32, String>::new();
+    let mut control_stack = Vec::<ControlFrame>::new();
+    let mut control_indent = 0usize;
+    let mut next_control_label = 0usize;
     let mut has_explicit_return = false;
     let param_count_u32 = u32::try_from(signature.params.len()).unwrap_or(u32::MAX);
 
@@ -782,10 +785,40 @@ fn render_reconstructed_function_body_lines(
                 let left = pop_or_default(&mut stack, "i32");
                 stack.push(format!("(({left} < {right}) as i32)"));
             }
+            Instruction::I32LtU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) < ({right} as u32)) as i32)"));
+            }
             Instruction::I32GtS => {
                 let right = pop_or_default(&mut stack, "i32");
                 let left = pop_or_default(&mut stack, "i32");
                 stack.push(format!("(({left} > {right}) as i32)"));
+            }
+            Instruction::I32GtU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) > ({right} as u32)) as i32)"));
+            }
+            Instruction::I32LeS => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("(({left} <= {right}) as i32)"));
+            }
+            Instruction::I32LeU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) <= ({right} as u32)) as i32)"));
+            }
+            Instruction::I32GeS => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("(({left} >= {right}) as i32)"));
+            }
+            Instruction::I32GeU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) >= ({right} as u32)) as i32)"));
             }
             Instruction::I32Eqz => {
                 let value = pop_or_default(&mut stack, "i32");
@@ -810,10 +843,40 @@ fn render_reconstructed_function_body_lines(
                 let left = pop_or_default(&mut stack, "i64");
                 stack.push(format!("(({left} < {right}) as i32)"));
             }
+            Instruction::I64LtU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) < ({right} as u64)) as i32)"));
+            }
             Instruction::I64GtS => {
                 let right = pop_or_default(&mut stack, "i64");
                 let left = pop_or_default(&mut stack, "i64");
                 stack.push(format!("(({left} > {right}) as i32)"));
+            }
+            Instruction::I64GtU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) > ({right} as u64)) as i32)"));
+            }
+            Instruction::I64LeS => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("(({left} <= {right}) as i32)"));
+            }
+            Instruction::I64LeU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) <= ({right} as u64)) as i32)"));
+            }
+            Instruction::I64GeS => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("(({left} >= {right}) as i32)"));
+            }
+            Instruction::I64GeU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) >= ({right} as u64)) as i32)"));
             }
             Instruction::I32Add => {
                 let right = pop_or_default(&mut stack, "i32");
@@ -830,6 +893,56 @@ fn render_reconstructed_function_body_lines(
                 let left = pop_or_default(&mut stack, "i32");
                 stack.push(format!("({left} * {right})"));
             }
+            Instruction::I32DivS => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} / {right})"));
+            }
+            Instruction::I32DivU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) / ({right} as u32)) as i32)"));
+            }
+            Instruction::I32RemS => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} % {right})"));
+            }
+            Instruction::I32RemU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) % ({right} as u32)) as i32)"));
+            }
+            Instruction::I32And => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} & {right})"));
+            }
+            Instruction::I32Or => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} | {right})"));
+            }
+            Instruction::I32Xor => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} ^ {right})"));
+            }
+            Instruction::I32Shl => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} << ({right} as u32))"));
+            }
+            Instruction::I32ShrS => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("({left} >> ({right} as u32))"));
+            }
+            Instruction::I32ShrU => {
+                let right = pop_or_default(&mut stack, "i32");
+                let left = pop_or_default(&mut stack, "i32");
+                stack.push(format!("((({left} as u32) >> ({right} as u32)) as i32)"));
+            }
             Instruction::I64Add => {
                 let right = pop_or_default(&mut stack, "i64");
                 let left = pop_or_default(&mut stack, "i64");
@@ -844,6 +957,56 @@ fn render_reconstructed_function_body_lines(
                 let right = pop_or_default(&mut stack, "i64");
                 let left = pop_or_default(&mut stack, "i64");
                 stack.push(format!("({left} * {right})"));
+            }
+            Instruction::I64DivS => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} / {right})"));
+            }
+            Instruction::I64DivU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) / ({right} as u64)) as i64)"));
+            }
+            Instruction::I64RemS => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} % {right})"));
+            }
+            Instruction::I64RemU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) % ({right} as u64)) as i64)"));
+            }
+            Instruction::I64And => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} & {right})"));
+            }
+            Instruction::I64Or => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} | {right})"));
+            }
+            Instruction::I64Xor => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} ^ {right})"));
+            }
+            Instruction::I64Shl => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} << ({right} as u32))"));
+            }
+            Instruction::I64ShrS => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("({left} >> ({right} as u32))"));
+            }
+            Instruction::I64ShrU => {
+                let right = pop_or_default(&mut stack, "i64");
+                let left = pop_or_default(&mut stack, "i64");
+                stack.push(format!("((({left} as u64) >> ({right} as u32)) as i64)"));
             }
             Instruction::Call { function_index } => {
                 if let Some(target) = call_targets.get(function_index) {
@@ -880,21 +1043,77 @@ fn render_reconstructed_function_body_lines(
                 targets,
                 default_target,
             } => {
-                lines.push(format!(
-                    "// unsupported instruction: br_table targets={targets:?} default={default_target}"
-                ));
+                let selector = pop_or_default(&mut stack, "i32");
+                push_indented_line(&mut lines, control_indent, format!("match {selector} {{"));
+                for (index, target_depth) in targets.iter().enumerate() {
+                    push_indented_line(&mut lines, control_indent + 1, format!("{index} => {{"));
+                    match resolve_branch_action(*target_depth, &control_stack) {
+                        BranchAction::Continue { label } => {
+                            push_indented_line(
+                                &mut lines,
+                                control_indent + 2,
+                                format!("continue '{label};"),
+                            );
+                        }
+                        BranchAction::Break { label } => {
+                            push_indented_line(
+                                &mut lines,
+                                control_indent + 2,
+                                format!("break '{label};"),
+                            );
+                        }
+                        BranchAction::Unsupported { detail } => {
+                            push_indented_line(
+                                &mut lines,
+                                control_indent + 2,
+                                format!(
+                                    "// unsupported br_table target depth={target_depth} ({detail})"
+                                ),
+                            );
+                        }
+                    }
+                    push_indented_line(&mut lines, control_indent + 1, "},");
+                }
+                push_indented_line(&mut lines, control_indent + 1, "_ => {");
+                match resolve_branch_action(*default_target, &control_stack) {
+                    BranchAction::Continue { label } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent + 2,
+                            format!("continue '{label};"),
+                        );
+                    }
+                    BranchAction::Break { label } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent + 2,
+                            format!("break '{label};"),
+                        );
+                    }
+                    BranchAction::Unsupported { detail } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent + 2,
+                            format!(
+                                "// unsupported br_table default target depth={default_target} ({detail})"
+                            ),
+                        );
+                    }
+                }
+                push_indented_line(&mut lines, control_indent + 1, "},");
+                push_indented_line(&mut lines, control_indent, "}");
             }
             Instruction::Drop => {
                 let value = pop_or_default(&mut stack, "i32");
-                lines.push(format!("let _ = {value};"));
+                push_indented_line(&mut lines, control_indent, format!("let _ = {value};"));
             }
             Instruction::Return => {
                 has_explicit_return = true;
                 match signature.results.len() {
-                    0 => lines.push("return;".to_string()),
+                    0 => push_indented_line(&mut lines, control_indent, "return;"),
                     1 => {
                         let value = pop_or_default(&mut stack, &signature.results[0]);
-                        lines.push(format!("return {value};"));
+                        push_indented_line(&mut lines, control_indent, format!("return {value};"));
                     }
                     _ => {
                         let mut values = Vec::with_capacity(signature.results.len());
@@ -902,57 +1121,168 @@ fn render_reconstructed_function_body_lines(
                             values.push(pop_or_default(&mut stack, ty));
                         }
                         values.reverse();
-                        lines.push(format!("return ({});", values.join(", ")));
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!("return ({});", values.join(", ")),
+                        );
                     }
                 }
             }
             Instruction::Block => {
-                lines.push("// unsupported instruction: block (structural control)".to_string());
+                let label = format!("cf_{next_control_label}");
+                next_control_label = next_control_label.saturating_add(1);
+                push_indented_line(&mut lines, control_indent, format!("'{label}: {{"));
+                control_stack.push(ControlFrame {
+                    kind: ControlFrameKind::Block,
+                    label,
+                });
+                control_indent = control_indent.saturating_add(1);
             }
             Instruction::Loop => {
-                lines.push("// unsupported instruction: loop (structural control)".to_string());
+                let label = format!("cf_{next_control_label}");
+                next_control_label = next_control_label.saturating_add(1);
+                push_indented_line(&mut lines, control_indent, format!("'{label}: loop {{"));
+                control_stack.push(ControlFrame {
+                    kind: ControlFrameKind::Loop,
+                    label,
+                });
+                control_indent = control_indent.saturating_add(1);
             }
             Instruction::If => {
-                lines.push("// unsupported instruction: if (structural control)".to_string());
+                let condition = pop_or_default(&mut stack, "i32");
+                push_indented_line(
+                    &mut lines,
+                    control_indent,
+                    format!("if ({condition}) != 0 {{"),
+                );
+                control_stack.push(ControlFrame {
+                    kind: ControlFrameKind::If { seen_else: false },
+                    label: format!("if_{next_control_label}"),
+                });
+                next_control_label = next_control_label.saturating_add(1);
+                control_indent = control_indent.saturating_add(1);
             }
             Instruction::Else => {
-                lines.push("// unsupported instruction: else (structural control)".to_string());
+                match control_stack.last_mut() {
+                    Some(ControlFrame {
+                        kind: ControlFrameKind::If { seen_else },
+                        ..
+                    }) if !*seen_else => {
+                        *seen_else = true;
+                        control_indent = control_indent.saturating_sub(1);
+                        push_indented_line(&mut lines, control_indent, "} else {");
+                        control_indent = control_indent.saturating_add(1);
+                    }
+                    _ => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            "// unsupported instruction: else (structural control mismatch)",
+                        );
+                    }
+                }
             }
             Instruction::Br { depth } => {
-                lines.push(format!(
-                    "// unsupported instruction: br depth={depth} (branch control)"
-                ));
+                match resolve_branch_action(*depth, &control_stack) {
+                    BranchAction::Continue { label } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!("continue '{label};"),
+                        );
+                    }
+                    BranchAction::Break { label } => {
+                        push_indented_line(&mut lines, control_indent, format!("break '{label};"));
+                    }
+                    BranchAction::Unsupported { detail } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!("// unsupported instruction: br depth={depth} ({detail})"),
+                        );
+                    }
+                }
             }
             Instruction::BrIf { depth } => {
-                lines.push(format!(
-                    "// unsupported instruction: br_if depth={depth} (branch control)"
-                ));
+                let condition = pop_or_default(&mut stack, "i32");
+                match resolve_branch_action(*depth, &control_stack) {
+                    BranchAction::Continue { label } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!("if ({condition}) != 0 {{"),
+                        );
+                        push_indented_line(
+                            &mut lines,
+                            control_indent + 1,
+                            format!("continue '{label};"),
+                        );
+                        push_indented_line(&mut lines, control_indent, "}");
+                    }
+                    BranchAction::Break { label } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!("if ({condition}) != 0 {{"),
+                        );
+                        push_indented_line(
+                            &mut lines,
+                            control_indent + 1,
+                            format!("break '{label};"),
+                        );
+                        push_indented_line(&mut lines, control_indent, "}");
+                    }
+                    BranchAction::Unsupported { detail } => {
+                        push_indented_line(
+                            &mut lines,
+                            control_indent,
+                            format!(
+                                "// unsupported instruction: br_if depth={depth} ({detail}), condition={condition}"
+                            ),
+                        );
+                    }
+                }
             }
             Instruction::CallIndirect {
                 type_index,
                 table_index,
             } => {
-                lines.push(format!(
+                push_indented_line(
+                    &mut lines,
+                    control_indent,
+                    format!(
                     "// unsupported instruction: call_indirect type_index={type_index} table_index={table_index}"
-                ));
+                    ),
+                );
             }
-            Instruction::End => {}
+            Instruction::End => {
+                if control_stack.pop().is_some() {
+                    control_indent = control_indent.saturating_sub(1);
+                    push_indented_line(&mut lines, control_indent, "}");
+                }
+            }
         }
+    }
+
+    while control_stack.pop().is_some() {
+        control_indent = control_indent.saturating_sub(1);
+        push_indented_line(&mut lines, control_indent, "}");
     }
 
     if !has_explicit_return {
         match signature.results.len() {
             0 => {
                 for value in stack {
-                    lines.push(format!("let _ = {value};"));
+                    push_indented_line(&mut lines, control_indent, format!("let _ = {value};"));
                 }
             }
             1 => {
                 let result = pop_or_default(&mut stack, &signature.results[0]);
                 for value in stack {
-                    lines.push(format!("let _ = {value};"));
+                    push_indented_line(&mut lines, control_indent, format!("let _ = {value};"));
                 }
-                lines.push(result);
+                push_indented_line(&mut lines, control_indent, result);
             }
             _ => {
                 let mut values = Vec::with_capacity(signature.results.len());
@@ -961,14 +1291,70 @@ fn render_reconstructed_function_body_lines(
                 }
                 values.reverse();
                 for value in stack {
-                    lines.push(format!("let _ = {value};"));
+                    push_indented_line(&mut lines, control_indent, format!("let _ = {value};"));
                 }
-                lines.push(format!("({})", values.join(", ")));
+                push_indented_line(&mut lines, control_indent, format!("({})", values.join(", ")));
             }
         }
     }
 
     lines
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ControlFrame {
+    kind: ControlFrameKind,
+    label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ControlFrameKind {
+    Block,
+    Loop,
+    If { seen_else: bool },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum BranchAction {
+    Continue { label: String },
+    Break { label: String },
+    Unsupported { detail: String },
+}
+
+fn resolve_branch_action(depth: u32, control_stack: &[ControlFrame]) -> BranchAction {
+    let Ok(depth_usize) = usize::try_from(depth) else {
+        return BranchAction::Unsupported {
+            detail: "branch depth is too large for platform usize".to_string(),
+        };
+    };
+
+    let Some(offset) = depth_usize.checked_add(1) else {
+        return BranchAction::Unsupported {
+            detail: "branch depth overflow".to_string(),
+        };
+    };
+    let Some(target_index) = control_stack.len().checked_sub(offset) else {
+        return BranchAction::Unsupported {
+            detail: "branch depth exceeds active control nesting".to_string(),
+        };
+    };
+
+    let target = &control_stack[target_index];
+    match &target.kind {
+        ControlFrameKind::Loop => BranchAction::Continue {
+            label: target.label.clone(),
+        },
+        ControlFrameKind::Block => BranchAction::Break {
+            label: target.label.clone(),
+        },
+        ControlFrameKind::If { .. } => BranchAction::Unsupported {
+            detail: "if-target branches are not reconstructed yet".to_string(),
+        },
+    }
+}
+
+fn push_indented_line(lines: &mut Vec<String>, indent: usize, line: impl AsRef<str>) {
+    lines.push(format!("{}{}", "    ".repeat(indent), line.as_ref()));
 }
 
 fn pop_or_default(stack: &mut Vec<String>, wasm_type: &str) -> String {
@@ -1618,6 +2004,105 @@ mod tests {
         );
     }
 
+    #[test]
+    fn reconstruction_emits_structured_control_flow_for_cfg_fixture() {
+        let wasm = load_wasm_fixture("cfg_branch_loop_merge.wasm");
+
+        let rendered = reconstruct_module_from_wasm(&wasm)
+            .expect("cfg fixture should reconstruct with structured control-flow");
+
+        assert!(
+            rendered.contains("loop {"),
+            "loop opcode should be reconstructed into a Rust loop block"
+        );
+        assert!(
+            rendered.contains("if (") && rendered.contains("} else {"),
+            "if/else opcodes should be reconstructed into Rust conditionals"
+        );
+        assert!(
+            !rendered.contains("unsupported instruction: loop (structural control)"),
+            "loop should no longer emit structural fallback comments"
+        );
+        assert!(
+            !rendered.contains("unsupported instruction: if (structural control)"),
+            "if should no longer emit structural fallback comments"
+        );
+        assert!(
+            !rendered.contains("unsupported instruction: else (structural control)"),
+            "else should no longer emit structural fallback comments"
+        );
+    }
+
+    #[test]
+    fn reconstruction_emits_match_for_br_table_when_targets_are_structured() {
+        let wasm = wasm_with_single_exported_function(&[
+            0x02, 0x40, // block
+            0x03, 0x40, // loop
+            0x41, 0x00, // i32.const 0 (selector)
+            0x0e, 0x01, 0x00, 0x01, // br_table [0] default 1
+            0x0b, // end loop
+            0x0b, // end block
+            0x0b, // end function
+        ]);
+
+        let rendered = reconstruct_module_from_wasm(&wasm)
+            .expect("br_table fixture should reconstruct into match shape");
+
+        assert!(
+            rendered.contains("match "),
+            "br_table should reconstruct to a Rust match expression where feasible"
+        );
+        assert!(
+            rendered.contains("continue 'cf_"),
+            "br_table loop target should map to labeled continue"
+        );
+        assert!(
+            rendered.contains("break 'cf_"),
+            "br_table block target should map to labeled break"
+        );
+        assert!(
+            !rendered.contains("unsupported instruction: br_table"),
+            "br_table should not degrade to a single fallback comment for structured targets"
+        );
+    }
+
+    #[test]
+    fn control_flow_reconstruction_remains_deterministic_for_cfg_fixture() {
+        let wasm = load_wasm_fixture("cfg_branch_loop_merge.wasm");
+
+        let first = reconstruct_module_from_wasm(&wasm)
+            .expect("cfg fixture should reconstruct deterministically");
+        let second = reconstruct_module_from_wasm(&wasm)
+            .expect("cfg fixture should reconstruct deterministically");
+
+        assert_eq!(
+            first, second,
+            "control-flow reconstruction output must be deterministic across runs"
+        );
+    }
+
+    #[test]
+    fn unsupported_branch_depth_degrades_with_explicit_comment() {
+        let wasm = wasm_with_single_exported_function(&[
+            0x02, 0x40, // block
+            0x0c, 0x02, // br depth=2 (invalid relative to active stack depth)
+            0x0b, // end block
+            0x0b, // end function
+        ]);
+
+        let rendered = reconstruct_module_from_wasm(&wasm)
+            .expect("unsupported branch targets should still reconstruct safely");
+
+        assert!(
+            rendered.contains("unsupported instruction: br depth=2 (branch depth exceeds active control nesting)"),
+            "unsupported branch target should degrade with an explicit explanatory comment"
+        );
+        assert!(
+            rendered.contains("'cf_0: {"),
+            "surrounding structured control flow should still reconstruct"
+        );
+    }
+
     fn load_wasm_fixture(name: &str) -> Vec<u8> {
         let path = fixture_path(name);
         std::fs::read(&path)
@@ -1679,5 +2164,33 @@ mod tests {
                 break;
             }
         }
+    }
+
+    fn wasm_with_single_exported_function(body_ops: &[u8]) -> Vec<u8> {
+        let mut body = Vec::with_capacity(body_ops.len() + 1);
+        body.push(0x00); // local declaration count
+        body.extend_from_slice(body_ops);
+
+        let mut code_payload = vec![0x01]; // one function body
+        push_leb_u32(
+            u32::try_from(body.len()).expect("function body length should fit u32"),
+            &mut code_payload,
+        );
+        code_payload.extend_from_slice(&body);
+
+        let mut wasm = vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // type section: one () -> ()
+            0x03, 0x02, 0x01, 0x00, // function section
+            0x07, 0x05, 0x01, 0x01, 0x66, 0x00, 0x00, // export "f"
+            0x0a, // code section id
+        ];
+        push_leb_u32(
+            u32::try_from(code_payload.len()).expect("code payload length should fit u32"),
+            &mut wasm,
+        );
+        wasm.extend_from_slice(&code_payload);
+        wasm
     }
 }
