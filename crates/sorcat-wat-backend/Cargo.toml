@@ -1,0 +1,9 @@
+[package]
+name = "sorcat-wat-backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sorcat-core = { path = "../sorcat-core" }
+sorcat-soroban-knowledge = { path = "../sorcat-soroban-knowledge" }
+wasmprinter = { workspace = true }

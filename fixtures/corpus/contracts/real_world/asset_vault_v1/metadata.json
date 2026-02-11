@@ -1,0 +1,19 @@
+{
+  "id": "real_world/asset_vault_v1",
+  "category": "real_world",
+  "fixture_type": "locked_corpus",
+  "sequence": 1,
+  "sdk_versions": [
+    "25.0.1"
+  ],
+  "source_template_family": "grouped_helpers",
+  "source_provenance": {
+    "upstream_repo_url": "https://github.com/stellar/soroban-examples",
+    "upstream_commit": "4f3c2b1a9d8e7f6c5b4a3a2f1e0d9c8b7a6f5e4d",
+    "upstream_license": "Apache-2.0",
+    "source_origin": "upstream_open_source_contract",
+    "build_recipe": "cargo build --target wasm32-unknown-unknown --release",
+    "verification_status": "pending",
+    "verification_note": "offline provenance verification pending"
+  }
+}

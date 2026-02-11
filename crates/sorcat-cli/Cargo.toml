@@ -1,0 +1,14 @@
+[package]
+name = "sorcat-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true }
+indexmap = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sorcat-core = { path = "../sorcat-core" }
+sorcat-eval = { path = "../sorcat-eval" }
+sorcat-rust-backend = { path = "../sorcat-rust-backend" }
+sorcat-wat-backend = { path = "../sorcat-wat-backend" }

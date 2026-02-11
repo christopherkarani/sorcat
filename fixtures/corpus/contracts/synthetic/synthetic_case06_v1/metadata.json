@@ -1,0 +1,10 @@
+{
+  "id": "synthetic/synthetic_case06_v1",
+  "category": "synthetic",
+  "fixture_type": "locked_corpus",
+  "sequence": 26,
+  "sdk_versions": [
+    "22.1.0"
+  ],
+  "source_template_family": "staged_boot"
+}

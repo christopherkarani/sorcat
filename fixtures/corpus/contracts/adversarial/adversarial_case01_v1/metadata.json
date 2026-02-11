@@ -1,0 +1,10 @@
+{
+  "id": "adversarial/adversarial_case01_v1",
+  "category": "adversarial",
+  "fixture_type": "locked_corpus",
+  "sequence": 31,
+  "sdk_versions": [
+    "25.0.1"
+  ],
+  "source_template_family": "seeded_calls"
+}

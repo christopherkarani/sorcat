@@ -1,0 +1,10 @@
+{
+  "id": "synthetic/synthetic_case07_v1",
+  "category": "synthetic",
+  "fixture_type": "locked_corpus",
+  "sequence": 27,
+  "sdk_versions": [
+    "25.0.1"
+  ],
+  "source_template_family": "tail_return"
+}

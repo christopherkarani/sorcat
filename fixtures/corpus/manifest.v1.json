@@ -1,0 +1,806 @@
+{
+  "schema_version": "1.0.0",
+  "locked": true,
+  "contracts": [
+    {
+      "id": "real_world/asset_vault_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/asset_vault_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/asset_vault_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/asset_vault_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/asset_vault_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/auction_house_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/auction_house_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/auction_house_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/auction_house_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/auction_house_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/bridge_adapter_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/bridge_adapter_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/bridge_adapter_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/bridge_adapter_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/bridge_adapter_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/dao_treasury_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/dao_treasury_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/dao_treasury_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/dao_treasury_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/dao_treasury_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/dex_router_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/dex_router_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/dex_router_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/dex_router_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/dex_router_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/escrow_service_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/escrow_service_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/escrow_service_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/escrow_service_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/escrow_service_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/fee_collector_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/fee_collector_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/fee_collector_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/fee_collector_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/fee_collector_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/governance_vote_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/governance_vote_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/governance_vote_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/governance_vote_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/governance_vote_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/insurance_pool_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/insurance_pool_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/insurance_pool_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/insurance_pool_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/insurance_pool_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/lending_pool_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/lending_pool_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/lending_pool_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/lending_pool_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/lending_pool_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/liquidity_pool_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/liquidity_pool_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/liquidity_pool_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/liquidity_pool_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/liquidity_pool_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/multi_sig_wallet_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/multi_sig_wallet_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/multi_sig_wallet_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/multi_sig_wallet_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/multi_sig_wallet_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/nft_market_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/nft_market_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/nft_market_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/nft_market_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/nft_market_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/oracle_feed_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/oracle_feed_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/oracle_feed_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/oracle_feed_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/oracle_feed_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/payment_channel_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/payment_channel_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/payment_channel_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/payment_channel_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/payment_channel_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/reward_distributor_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/reward_distributor_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/reward_distributor_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/reward_distributor_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/reward_distributor_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/staking_pool_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/staking_pool_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/staking_pool_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/staking_pool_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/staking_pool_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/subscription_manager_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/subscription_manager_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/subscription_manager_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/subscription_manager_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/subscription_manager_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/token_swap_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/token_swap_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/token_swap_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/token_swap_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/real_world/token_swap_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "real_world/vesting_wallet_v1",
+      "category": "real_world",
+      "rust_source": "contracts/real_world/vesting_wallet_v1/src/lib.rs",
+      "metadata_path": "contracts/real_world/vesting_wallet_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/vesting_wallet_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/real_world/vesting_wallet_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case01_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case01_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case01_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case01_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case01_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case02_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case02_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case02_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case02_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case02_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case03_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case03_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case03_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case03_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case03_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case04_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case04_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case04_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case04_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case04_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case05_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case05_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case05_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case05_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case05_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case06_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case06_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case06_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case06_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case06_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case07_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case07_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case07_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case07_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case07_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case08_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case08_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case08_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case08_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case08_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case09_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case09_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case09_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case09_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/synthetic/synthetic_case09_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "synthetic/synthetic_case10_v1",
+      "category": "synthetic",
+      "rust_source": "contracts/synthetic/synthetic_case10_v1/src/lib.rs",
+      "metadata_path": "contracts/synthetic/synthetic_case10_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case10_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/synthetic/synthetic_case10_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case01_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case01_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case01_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case01_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case01_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case02_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case02_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case02_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case02_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case02_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case03_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case03_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case03_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case03_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case03_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case04_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case04_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case04_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case04_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case04_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case05_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case05_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case05_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case05_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case05_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case06_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case06_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case06_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case06_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case06_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case07_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case07_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case07_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case07_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case07_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case08_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case08_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case08_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case08_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case08_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case09_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case09_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case09_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case09_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "25.0.1",
+          "wasm_path": "contracts/adversarial/adversarial_case09_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    },
+    {
+      "id": "adversarial/adversarial_case10_v1",
+      "category": "adversarial",
+      "rust_source": "contracts/adversarial/adversarial_case10_v1/src/lib.rs",
+      "metadata_path": "contracts/adversarial/adversarial_case10_v1/metadata.json",
+      "variants": [
+        {
+          "profile": "debug",
+          "include_debug_names": true,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case10_v1/wasm/debug-with-names.wasm"
+        },
+        {
+          "profile": "release",
+          "include_debug_names": false,
+          "sdk_version": "22.1.0",
+          "wasm_path": "contracts/adversarial/adversarial_case10_v1/wasm/release-stripped.wasm"
+        }
+      ]
+    }
+  ]
+}

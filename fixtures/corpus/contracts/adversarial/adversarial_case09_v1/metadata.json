@@ -1,0 +1,10 @@
+{
+  "id": "adversarial/adversarial_case09_v1",
+  "category": "adversarial",
+  "fixture_type": "locked_corpus",
+  "sequence": 39,
+  "sdk_versions": [
+    "25.0.1"
+  ],
+  "source_template_family": "staged_boot"
+}

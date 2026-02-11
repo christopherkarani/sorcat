@@ -1,0 +1,10 @@
+{
+  "id": "adversarial/adversarial_case08_v1",
+  "category": "adversarial",
+  "fixture_type": "locked_corpus",
+  "sequence": 38,
+  "sdk_versions": [
+    "22.1.0"
+  ],
+  "source_template_family": "module_bridge"
+}

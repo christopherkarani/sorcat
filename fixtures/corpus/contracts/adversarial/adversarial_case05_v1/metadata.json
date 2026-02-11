@@ -1,0 +1,10 @@
+{
+  "id": "adversarial/adversarial_case05_v1",
+  "category": "adversarial",
+  "fixture_type": "locked_corpus",
+  "sequence": 35,
+  "sdk_versions": [
+    "25.0.1"
+  ],
+  "source_template_family": "tail_return"
+}
