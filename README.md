@@ -42,6 +42,7 @@ This command validates:
 2. normalized AST reconstruction threshold (`>= 0.90`)
 3. Soroban builtin coverage threshold (`>= 0.98`)
 4. provenance verification state (`submission_ready=true|false`)
+5. deterministic corpus gap metrics (`unsupported_opcode_events`, `fallback_comment_total`)
 
 ## Capability Matrix (Q1 2026 Spec)
 
@@ -51,12 +52,12 @@ This command validates:
 | Produce full WAT disassembly | Met | Uses `wasmprinter` for full WAT plus deterministic Soroban semantic prelude annotations. |
 | Soroban custom-section semantic decoding (`contractspecv0`, `contractmetav0`, `contractenvmetav0`) | Met | Decoded into typed core structures (functions/types/errors/meta/env-meta) with malformed handling. |
 | Soroban knowledge resolution (builtins/helpers/XDR semantics) | Met | Knowledge layer emits canonical ids, signatures, protocol windows, confidence/reasons, and semantic tags. |
-| Rust reconstruction with meaningful structure | Partial | Instruction-driven reconstruction now emits host wrappers and typed artifacts from decoded spec; unsupported control-flow constructs fall back to explicit comments. |
-| Parser/IR coverage for common Soroban opcodes | Partial | Added `local.tee`, globals, i64 arithmetic/comparisons, select, br_table; unsupported opcodes still return structured errors. |
+| Rust reconstruction with meaningful structure | Met | Structured reconstruction now emits deterministic `if/else`, labeled loop/block control flow, and match-style `br_table` lowering where targets are representable. |
+| Parser/IR coverage for common Soroban opcodes | Met | Core IR/decode now covers common integer compares/div-rem/bitwise/shift families (`i32`/`i64`) with deterministic opcode rendering and explicit unsupported errors for unknown opcodes. |
 | Non-circular scoring path | Met | Removed entry-only projection shortcut; uses symmetric public-interface normalization plus AST-distance checks. |
 | Threshold gates (`>=0.90` mean AST, `>=0.98` builtin coverage) | Met | Enforced in CLI score flow and tests. |
 | Real-world provenance quality gates | Met | Placeholder-like provenance values are rejected; pending verification is explicitly tracked. |
-| Submission-ready provenance state | Partial | `score --require-submission-ready` blocks while `verification_status != verified`. Current committed corpus is intentionally pending. |
+| Submission-ready provenance state | Met | Committed `real_world` metadata is verified; `score --require-submission-ready` exits successfully while pending mode remains available for offline fixture workflows. |
 
 ## Release Artifacts
 
