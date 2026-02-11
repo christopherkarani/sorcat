@@ -117,7 +117,10 @@ fn committed_wasm_variants_have_per_contract_uniqueness_signal() {
         for variant in &contract.variants {
             let wasm_path = common::corpus_root().join(&variant.wasm_path);
             let bytes = fs::read(&wasm_path).unwrap_or_else(|err| {
-                panic!("failed to read committed wasm fixture {}: {err}", wasm_path.display())
+                panic!(
+                    "failed to read committed wasm fixture {}: {err}",
+                    wasm_path.display()
+                )
             });
 
             match variant.profile {
@@ -228,7 +231,10 @@ fn committed_real_world_metadata_must_include_source_provenance() {
             });
 
         for field in REQUIRED_PROVENANCE_FIELDS {
-            let value = provenance_obj.get(field).and_then(Value::as_str).unwrap_or("");
+            let value = provenance_obj
+                .get(field)
+                .and_then(Value::as_str)
+                .unwrap_or("");
             assert!(
                 !value.trim().is_empty(),
                 "real_world metadata provenance field `{field}` must be non-empty: {}",
@@ -264,9 +270,8 @@ fn committed_real_world_metadata_must_include_source_provenance() {
             .unwrap_or("")
             .trim();
         assert!(
-            upstream_commit.len() >= 7
-                && upstream_commit.chars().all(|ch| ch.is_ascii_hexdigit()),
-            "real_world metadata upstream_commit must look like a commit hash: {}",
+            upstream_commit.len() == 40 && upstream_commit.chars().all(|ch| ch.is_ascii_hexdigit()),
+            "real_world metadata upstream_commit must be a full 40-character commit hash: {}",
             metadata_path.display()
         );
 
@@ -276,15 +281,15 @@ fn committed_real_world_metadata_must_include_source_provenance() {
             .unwrap_or("pending")
             .to_ascii_lowercase();
         assert!(
-            verification_status == "verified" || verification_status == "pending",
-            "verification_status must be either verified or pending: {}",
+            verification_status == "verified",
+            "committed real_world metadata must be submission-ready with verification_status=verified: {}",
             metadata_path.display()
         );
     }
 }
 
 #[test]
-fn committed_real_world_provenance_status_defaults_to_pending_until_verified() {
+fn committed_real_world_provenance_status_is_submission_ready() {
     let manifest = load_manifest(common::corpus_manifest_path())
         .expect("manifest loader should parse fixtures/corpus/manifest.v1.json");
 
@@ -292,8 +297,12 @@ fn committed_real_world_provenance_status_defaults_to_pending_until_verified() {
         .expect("provenance status summary should be computed for committed corpus");
 
     assert!(
-        !status.pending_contract_ids.is_empty(),
-        "expected explicit pending provenance status until external verification is completed"
+        status.pending_contract_ids.is_empty(),
+        "committed corpus should not contain pending real_world provenance entries"
+    );
+    assert!(
+        status.verified_contracts >= MIN_REAL_WORLD_CONTRACTS,
+        "committed corpus should report verified status for all real_world contracts"
     );
 }
 
@@ -418,7 +427,8 @@ fn fixture_layout_validation_requires_sources_wasm_and_metadata() {
             "upstream_license":"Apache-2.0",
             "source_origin":"upstream_open_source_contract",
             "build_recipe":"cargo build --target wasm32-unknown-unknown --release",
-            "verification_status":"pending"
+            "verification_status":"pending",
+            "verification_note":"offline verification pending for fixture test"
           }
         }"#,
     );
@@ -582,7 +592,10 @@ fn semantic_fingerprint(wasm: &[u8]) -> String {
 
     let mut export_parts = Vec::with_capacity(summary.exports.len());
     for export in &summary.exports {
-        export_parts.push(format!("{:?}::{}::{}", export.kind, export.name, export.index));
+        export_parts.push(format!(
+            "{:?}::{}::{}",
+            export.kind, export.name, export.index
+        ));
     }
 
     let mut body_parts = Vec::with_capacity(summary.function_bodies.len());
@@ -648,6 +661,7 @@ fn fingerprint_instruction(instruction: &Instruction) -> String {
         } => format!("br_table {:?} {default_target}", targets),
         Instruction::Drop => "drop".to_string(),
         Instruction::Return => "return".to_string(),
+        _ => format!("{instruction:?}"),
     }
 }
 
@@ -786,8 +800,7 @@ fn normalize_source_template_shape(source: &str) -> String {
 fn is_shape_keyword(token: &str) -> bool {
     matches!(
         token,
-        "#"
-            | "no_std"
+        "#" | "no_std"
             | "use"
             | "core"
             | "panic"

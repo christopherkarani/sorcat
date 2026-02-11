@@ -1,7 +1,7 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::collections::BTreeSet;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use indexmap::IndexMap;
@@ -12,22 +12,18 @@ use sorcat_core::{
     resolve_soroban_imports_with_limits, summarize_export_opcodes_with_limits,
 };
 use sorcat_eval::{
-    ast::{normalize_original_rust, normalize_reconstructed_rust, NormalizationOptions},
+    EvalError,
+    ast::{NormalizationOptions, normalize_original_rust, normalize_reconstructed_rust},
     corpus::{
         BuildProfile, BuildVariant, collect_real_world_provenance_status, load_manifest,
         validate_corpus_layout,
     },
-    report::{render_deterministic_report, DeterministicReport},
-    scoring::{compute_ast_score, evaluate_thresholds, summarize, ContractScore, Thresholds},
-    EvalError,
+    report::{DeterministicReport, render_deterministic_report},
+    scoring::{ContractScore, Thresholds, compute_ast_score, evaluate_thresholds, summarize},
 };
-use sorcat_rust_backend::{
-    reconstruct_module_from_wasm, RustBackendError,
-};
+use sorcat_rust_backend::{RustBackendError, reconstruct_module_from_wasm};
 use sorcat_wat_backend::{
-    render_module_summary_from_wasm,
-    render_wat_from_wasm_with_soroban_annotations,
-    WatBackendError,
+    WatBackendError, render_module_summary_from_wasm, render_wat_from_wasm_with_soroban_annotations,
 };
 use thiserror::Error;
 
@@ -179,6 +175,15 @@ struct ScoreContractMetadata {
     sequence: u64,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+struct GapMetrics {
+    variants_scanned: usize,
+    unsupported_opcode_events: usize,
+    unsupported_opcode_by_kind: BTreeMap<String, usize>,
+    fallback_comment_total: usize,
+    fallback_comment_by_kind: BTreeMap<String, usize>,
+}
+
 pub fn run_from<I, T>(args: I) -> Result<String, CliError>
 where
     I: IntoIterator<Item = T>,
@@ -256,8 +261,8 @@ fn run_explain(args: ExplainArgs) -> Result<String, CliError> {
         .collect::<Vec<_>>();
     function_symbols.sort();
 
-    let selected_body = summarize_export_opcodes_with_limits(&wasm, &args.export, &limits)?
-        .join(", ");
+    let selected_body =
+        summarize_export_opcodes_with_limits(&wasm, &args.export, &limits)?.join(", ");
 
     let mut lines = vec![
         format!("explain export={}", args.export),
@@ -373,6 +378,8 @@ fn run_score(args: ScoreArgs) -> Result<String, CliError> {
     let mut contracts = manifest.contracts.clone();
     contracts.sort_by(|left, right| left.id.cmp(&right.id));
     let mut locked_sequences = BTreeSet::new();
+    let mut gap_metrics =
+        measure_unsupported_opcode_frequency(&args.corpus_root, &contracts, &limits)?;
 
     let mut contract_scores = Vec::with_capacity(contracts.len());
     for contract in &contracts {
@@ -418,6 +425,7 @@ fn run_score(args: ScoreArgs) -> Result<String, CliError> {
             enforce_wasm_limits(&wasm, &limits)?;
 
             let reconstructed = reconstruct_module_from_wasm(&wasm)?;
+            accumulate_fallback_comment_metrics(&reconstructed, &mut gap_metrics);
             let normalized_reconstructed = normalize_reconstructed_rust(
                 &normalize_source_for_scoring(&reconstructed),
                 &normalization_options,
@@ -441,7 +449,8 @@ fn run_score(args: ScoreArgs) -> Result<String, CliError> {
         if locked_sequences != expected {
             return Err(CliError::InvalidArgument {
                 field: "metadata_path.sequence",
-                message: "locked corpus metadata sequences must be unique and contiguous".to_string(),
+                message: "locked corpus metadata sequences must be unique and contiguous"
+                    .to_string(),
             });
         }
     }
@@ -498,6 +507,26 @@ fn run_score(args: ScoreArgs) -> Result<String, CliError> {
         },
     );
     metadata.insert(
+        "gap_variants_scanned".to_string(),
+        gap_metrics.variants_scanned.to_string(),
+    );
+    metadata.insert(
+        "gap_unsupported_opcode_events".to_string(),
+        gap_metrics.unsupported_opcode_events.to_string(),
+    );
+    metadata.insert(
+        "gap_unsupported_opcode_kinds".to_string(),
+        encode_metric_map(&gap_metrics.unsupported_opcode_by_kind),
+    );
+    metadata.insert(
+        "gap_fallback_comment_total".to_string(),
+        gap_metrics.fallback_comment_total.to_string(),
+    );
+    metadata.insert(
+        "gap_fallback_comment_kinds".to_string(),
+        encode_metric_map(&gap_metrics.fallback_comment_by_kind),
+    );
+    metadata.insert(
         "threshold_min_mean_ast_score".to_string(),
         format!("{:.4}", thresholds.min_mean_ast_score),
     );
@@ -537,6 +566,22 @@ fn run_score(args: ScoreArgs) -> Result<String, CliError> {
         format!(
             "provenance_pending_contracts={}",
             provenance_status.pending_contract_ids.len()
+        ),
+        format!(
+            "unsupported_opcode_events={}",
+            gap_metrics.unsupported_opcode_events
+        ),
+        format!(
+            "unsupported_opcode_kinds={}",
+            encode_metric_map(&gap_metrics.unsupported_opcode_by_kind)
+        ),
+        format!(
+            "fallback_comment_total={}",
+            gap_metrics.fallback_comment_total
+        ),
+        format!(
+            "fallback_comment_kinds={}",
+            encode_metric_map(&gap_metrics.fallback_comment_by_kind)
         ),
     ];
     if let Some(path) = args.output {
@@ -742,6 +787,101 @@ fn baseline_builtin_coverage(imports: &[sorcat_core::SorobanImportResolution]) -
     }
 }
 
+fn measure_unsupported_opcode_frequency(
+    corpus_root: &Path,
+    contracts: &[sorcat_eval::corpus::CorpusContractEntry],
+    limits: &ParseLimits,
+) -> Result<GapMetrics, CliError> {
+    let mut metrics = GapMetrics::default();
+
+    for contract in contracts {
+        let mut variants = contract.variants.clone();
+        sort_variants(&mut variants);
+
+        for variant in &variants {
+            let wasm_path = corpus_root.join(&variant.wasm_path);
+            let wasm = read_wasm(&wasm_path)?;
+            metrics.variants_scanned = metrics.variants_scanned.saturating_add(1);
+
+            match decode_module_summary_with_limits(&wasm, limits) {
+                Ok(_) => {}
+                Err(error) if error.kind == CoreErrorKind::UnsupportedConstruct => {
+                    metrics.unsupported_opcode_events =
+                        metrics.unsupported_opcode_events.saturating_add(1);
+                    let kind = extract_unsupported_opcode_kind(&error.message);
+                    *metrics.unsupported_opcode_by_kind.entry(kind).or_insert(0) += 1;
+                }
+                Err(error) => return Err(CliError::from(error)),
+            }
+        }
+    }
+
+    Ok(metrics)
+}
+
+fn extract_unsupported_opcode_kind(message: &str) -> String {
+    let marker = "opcode 0x";
+    let Some(start) = message.find(marker).map(|index| index + marker.len()) else {
+        return "non_opcode_unsupported".to_string();
+    };
+    let suffix = &message[start..];
+    let hex: String = suffix
+        .chars()
+        .take_while(|ch| ch.is_ascii_hexdigit())
+        .collect();
+    if hex.is_empty() {
+        "non_opcode_unsupported".to_string()
+    } else {
+        format!("0x{}", hex.to_ascii_lowercase())
+    }
+}
+
+fn accumulate_fallback_comment_metrics(reconstructed: &str, metrics: &mut GapMetrics) {
+    for line in reconstructed.lines() {
+        let Some(kind) = extract_fallback_comment_kind(line.trim()) else {
+            continue;
+        };
+        metrics.fallback_comment_total = metrics.fallback_comment_total.saturating_add(1);
+        *metrics.fallback_comment_by_kind.entry(kind).or_insert(0) += 1;
+    }
+}
+
+fn extract_fallback_comment_kind(trimmed_line: &str) -> Option<String> {
+    let suffix = trimmed_line.strip_prefix("// ")?;
+    if let Some(detail) = suffix.strip_prefix("unsupported instruction: ") {
+        return Some(
+            detail
+                .split_whitespace()
+                .next()
+                .unwrap_or("unknown_instruction")
+                .trim_end_matches(':')
+                .to_string(),
+        );
+    }
+    if let Some(detail) = suffix.strip_prefix("unsupported ") {
+        return Some(
+            detail
+                .split_whitespace()
+                .next()
+                .unwrap_or("unknown_unsupported")
+                .trim_end_matches(':')
+                .to_string(),
+        );
+    }
+    None
+}
+
+fn encode_metric_map(values: &BTreeMap<String, usize>) -> String {
+    if values.is_empty() {
+        return "<none>".to_string();
+    }
+    values
+        .iter()
+        .map(|(kind, count)| format!("{kind}:{count}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 fn normalize_source_for_scoring(source: &str) -> String {
     let mut blocks = Vec::<(String, String)>::new();
     let mut lines = source.lines();
@@ -842,11 +982,7 @@ fn extract_function_name(block: &str) -> Option<String> {
         .chars()
         .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_')
         .collect();
-    if name.is_empty() {
-        None
-    } else {
-        Some(name)
-    }
+    if name.is_empty() { None } else { Some(name) }
 }
 
 fn deterministic_line_diff(left: &str, right: &str) -> Vec<String> {
@@ -907,7 +1043,10 @@ mod tests {
     use clap::CommandFactory;
     use serde_json::json;
 
-    use super::{normalize_source_for_scoring, run_from, Cli, CliError};
+    use super::{
+        Cli, CliError, extract_fallback_comment_kind, extract_unsupported_opcode_kind,
+        normalize_source_for_scoring, run_from,
+    };
 
     #[test]
     fn help_lists_required_commands() {
@@ -1041,6 +1180,8 @@ mod tests {
         assert!(output.contains("contracts_scored=1"));
         assert!(output.contains("mean_ast_score="));
         assert!(output.contains("builtin_coverage="));
+        assert!(output.contains("unsupported_opcode_events="));
+        assert!(output.contains("fallback_comment_total="));
         assert!(output.contains("report_json="));
     }
 
@@ -1098,7 +1239,7 @@ mod tests {
                 .to_str()
                 .expect("corpus root path should be utf-8"),
         ])
-            .expect("committed locked corpus should satisfy default score thresholds");
+        .expect("committed locked corpus should satisfy default score thresholds");
 
         assert!(
             output.contains("contracts_scored=80"),
@@ -1113,18 +1254,18 @@ mod tests {
             "score output should report builtin coverage",
         );
         assert!(
-            output.contains("submission_ready="),
+            output.contains("submission_ready=true"),
             "score output should report submission readiness status",
         );
     }
 
     #[test]
-    fn score_submission_ready_mode_blocks_when_provenance_is_pending() {
+    fn score_submission_ready_mode_passes_on_committed_verified_corpus() {
         let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../fixtures/corpus/manifest.v1.json");
         let corpus_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/corpus");
 
-        let error = run_from([
+        let output = run_from([
             "sorcat-cli",
             "score",
             "--manifest",
@@ -1135,7 +1276,33 @@ mod tests {
                 .expect("corpus root path should be utf-8"),
             "--require-submission-ready",
         ])
-        .expect_err("submission ready mode should block when provenance remains pending");
+        .expect("submission-ready mode should pass once committed corpus provenance is verified");
+
+        assert!(
+            output.contains("submission_ready=true"),
+            "submission-ready mode should report true for verified committed corpus",
+        );
+    }
+
+    #[test]
+    fn score_submission_ready_mode_blocks_when_fixture_provenance_is_pending() {
+        let root = unique_temp_root();
+        let manifest_path = write_minimal_real_world_score_fixture(&root, "pending");
+
+        let error = run_from([
+            "sorcat-cli",
+            "score",
+            "--manifest",
+            manifest_path.to_str().unwrap(),
+            "--corpus-root",
+            root.to_str().unwrap(),
+            "--min-mean-ast-score",
+            "0.0",
+            "--min-builtin-coverage",
+            "0.0",
+            "--require-submission-ready",
+        ])
+        .expect_err("pending real_world provenance should block submission-ready mode");
 
         assert!(
             matches!(
@@ -1145,7 +1312,7 @@ mod tests {
                     ..
                 }
             ),
-            "expected pending provenance to block submission-ready mode",
+            "expected pending provenance to block submission-ready mode"
         );
     }
 
@@ -1216,6 +1383,30 @@ mod tests {
         );
     }
 
+    #[test]
+    fn metric_extractors_remain_deterministic() {
+        assert_eq!(
+            extract_unsupported_opcode_kind("unsupported construct: opcode 0xfc is not supported"),
+            "0xfc"
+        );
+        assert_eq!(
+            extract_unsupported_opcode_kind("unsupported construct: non-MVP block type"),
+            "non_opcode_unsupported"
+        );
+        assert_eq!(
+            extract_fallback_comment_kind(
+                "// unsupported instruction: call_indirect type_index=0 table_index=0"
+            ),
+            Some("call_indirect".to_string())
+        );
+        assert_eq!(
+            extract_fallback_comment_kind(
+                "// unsupported br_table target depth=1 (if-target branches are not reconstructed yet)"
+            ),
+            Some("br_table".to_string())
+        );
+    }
+
     fn fixture_path(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../fixtures/wasm")
@@ -1276,6 +1467,64 @@ mod tests {
                             "include_debug_names": true,
                             "sdk_version": "23.0.0",
                             "wasm_path": "contracts/synthetic/sample_v1/wasm/debug-with-names.wasm"
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let manifest_path = root.join("manifest.v1.json");
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_string_pretty(&manifest_json)
+                .expect("fixture manifest JSON should serialize"),
+        )
+        .unwrap_or_else(|err| panic!("failed to write manifest fixture: {err}"));
+        manifest_path
+    }
+
+    fn write_minimal_real_world_score_fixture(root: &Path, verification_status: &str) -> PathBuf {
+        let contract_root = root.join("contracts/real_world/sample_v1");
+        std::fs::create_dir_all(contract_root.join("src"))
+            .unwrap_or_else(|err| panic!("failed to create src directory: {err}"));
+        std::fs::create_dir_all(contract_root.join("wasm"))
+            .unwrap_or_else(|err| panic!("failed to create wasm directory: {err}"));
+
+        std::fs::write(
+            contract_root.join("src/lib.rs"),
+            "pub fn sample(a: i32, b: i32) -> i32 { a + b }\n",
+        )
+        .unwrap_or_else(|err| panic!("failed to write source fixture: {err}"));
+        std::fs::write(
+            contract_root.join("metadata.json"),
+            format!(
+                "{{\"id\":\"real_world/sample_v1\",\"category\":\"real_world\",\"sequence\":1,\"source_provenance\":{{\"upstream_repo_url\":\"https://github.com/stellar/soroban-examples\",\"upstream_commit\":\"4f3c2b1a9d8e7f6c5b4a3a2f1e0d9c8b7a6f5e4d\",\"upstream_license\":\"Apache-2.0\",\"source_origin\":\"upstream_open_source_contract\",\"build_recipe\":\"cargo build --target wasm32-unknown-unknown --release\",\"verification_status\":\"{verification_status}\",\"verification_note\":\"fixture provenance status {verification_status}\"}}}}\n"
+            ),
+        )
+        .unwrap_or_else(|err| panic!("failed to write metadata fixture: {err}"));
+
+        let wasm_fixture = fixture_path("sections_imports_exports.wasm");
+        std::fs::copy(
+            wasm_fixture,
+            contract_root.join("wasm/debug-with-names.wasm"),
+        )
+        .unwrap_or_else(|err| panic!("failed to copy wasm fixture: {err}"));
+
+        let manifest_json = json!({
+            "schema_version": "1.0.0",
+            "locked": false,
+            "contracts": [
+                {
+                    "id": "real_world/sample_v1",
+                    "category": "real_world",
+                    "rust_source": "contracts/real_world/sample_v1/src/lib.rs",
+                    "metadata_path": "contracts/real_world/sample_v1/metadata.json",
+                    "variants": [
+                        {
+                            "profile": "debug",
+                            "include_debug_names": true,
+                            "sdk_version": "25.0.1",
+                            "wasm_path": "contracts/real_world/sample_v1/wasm/debug-with-names.wasm"
                         }
                     ]
                 }

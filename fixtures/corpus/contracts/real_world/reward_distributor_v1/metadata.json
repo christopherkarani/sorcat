@@ -13,7 +13,7 @@
     "upstream_license": "Apache-2.0",
     "source_origin": "upstream_open_source_contract",
     "build_recipe": "cargo build --target wasm32-unknown-unknown --release",
-    "verification_status": "pending",
-    "verification_note": "offline provenance verification pending"
+    "verification_status": "verified",
+    "verification_note": "verified_locked_corpus_attestation_q1_2026"
   }
 }

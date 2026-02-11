@@ -50,6 +50,12 @@ pub struct ProvenanceStatusSummary {
     pub pending_contract_ids: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VerificationStatus {
+    Verified,
+    Pending,
+}
+
 pub fn load_manifest(path: impl AsRef<Path>) -> Result<CorpusManifest, EvalError> {
     let path = path.as_ref().to_path_buf();
     let manifest_content = std::fs::read_to_string(&path).map_err(|source| EvalError::Io {
@@ -123,19 +129,15 @@ pub fn collect_real_world_provenance_status(
             resolve_under_root(corpus_root, &contract.metadata_path, "metadata_path")?;
         let metadata_json = ensure_json_file(&metadata_path, "metadata_path", &contract.id)?;
         validate_real_world_source_provenance(&metadata_json, &metadata_path, &contract.id)?;
+        let provenance = source_provenance_object(&metadata_json, &metadata_path, &contract.id)?;
 
-        let verification_status = metadata_json
-            .get("source_provenance")
-            .and_then(|value| value.get("verification_status"))
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("pending")
-            .trim()
-            .to_ascii_lowercase();
-
-        if verification_status == "verified" {
-            verified_contracts += 1;
-        } else {
-            pending_contract_ids.push(contract.id.clone());
+        match parse_verification_status(provenance, &metadata_path, &contract.id)? {
+            VerificationStatus::Verified => {
+                verified_contracts += 1;
+            }
+            VerificationStatus::Pending => {
+                pending_contract_ids.push(contract.id.clone());
+            }
         }
     }
 
@@ -385,22 +387,7 @@ fn validate_real_world_source_provenance(
     metadata_path: &Path,
     contract_id: &str,
 ) -> Result<(), EvalError> {
-    let metadata_obj = metadata_json.as_object().ok_or_else(|| EvalError::InvalidManifest {
-        message: format!(
-            "contract `{contract_id}` metadata `{}` must be a JSON object",
-            metadata_path.display()
-        ),
-    })?;
-
-    let provenance = metadata_obj
-        .get("source_provenance")
-        .and_then(serde_json::Value::as_object)
-        .ok_or_else(|| EvalError::InvalidManifest {
-            message: format!(
-                "contract `{contract_id}` metadata `{}` must include `source_provenance` object",
-                metadata_path.display()
-            ),
-        })?;
+    let provenance = source_provenance_object(metadata_json, metadata_path, contract_id)?;
 
     for field in [
         "upstream_repo_url",
@@ -436,10 +423,10 @@ fn validate_real_world_source_provenance(
         .and_then(serde_json::Value::as_str)
         .unwrap_or("")
         .trim();
-    if !upstream_repo_url.starts_with("https://") {
+    if !looks_https_repo_url(upstream_repo_url) {
         return Err(EvalError::InvalidManifest {
             message: format!(
-                "contract `{contract_id}` provenance `upstream_repo_url` must start with https://",
+                "contract `{contract_id}` provenance `upstream_repo_url` must be a valid https repository URL",
             ),
         });
     }
@@ -449,19 +436,135 @@ fn validate_real_world_source_provenance(
         .and_then(serde_json::Value::as_str)
         .unwrap_or("")
         .trim();
-    let commit_hex_like = upstream_commit.len() >= 7
-        && upstream_commit
-            .chars()
-            .all(|ch| ch.is_ascii_hexdigit());
+    let commit_hex_like =
+        upstream_commit.len() == 40 && upstream_commit.chars().all(|ch| ch.is_ascii_hexdigit());
     if !commit_hex_like {
         return Err(EvalError::InvalidManifest {
             message: format!(
-                "contract `{contract_id}` provenance `upstream_commit` must look like a real commit hash",
+                "contract `{contract_id}` provenance `upstream_commit` must be a full 40-character hexadecimal commit hash",
             ),
         });
     }
 
+    let upstream_license = provenance
+        .get("upstream_license")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim();
+    if upstream_license.len() < 3 {
+        return Err(EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` provenance `upstream_license` must be a meaningful non-empty license identifier",
+            ),
+        });
+    }
+
+    let source_origin = provenance
+        .get("source_origin")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !matches!(
+        source_origin.as_str(),
+        "upstream_open_source_contract" | "upstream_open_source_fork" | "audited_internal_mirror"
+    ) {
+        return Err(EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` provenance `source_origin` must be one of upstream_open_source_contract, upstream_open_source_fork, audited_internal_mirror",
+            ),
+        });
+    }
+
+    let build_recipe = provenance
+        .get("build_recipe")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !(build_recipe.contains("cargo") && build_recipe.contains("wasm32-unknown-unknown")) {
+        return Err(EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` provenance `build_recipe` must include cargo and wasm32-unknown-unknown target",
+            ),
+        });
+    }
+
+    let verification_note = provenance
+        .get("verification_note")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .trim();
+    if verification_note.is_empty() || looks_placeholder_value(verification_note) {
+        return Err(EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` provenance field `verification_note` must be non-empty and non-placeholder",
+            ),
+        });
+    }
+
+    parse_verification_status(provenance, metadata_path, contract_id)?;
+
     Ok(())
+}
+
+fn source_provenance_object<'a>(
+    metadata_json: &'a serde_json::Value,
+    metadata_path: &Path,
+    contract_id: &str,
+) -> Result<&'a serde_json::Map<String, serde_json::Value>, EvalError> {
+    let metadata_obj = metadata_json
+        .as_object()
+        .ok_or_else(|| EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` metadata `{}` must be a JSON object",
+                metadata_path.display()
+            ),
+        })?;
+
+    metadata_obj
+        .get("source_provenance")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` metadata `{}` must include `source_provenance` object",
+                metadata_path.display()
+            ),
+        })
+}
+
+fn parse_verification_status(
+    provenance: &serde_json::Map<String, serde_json::Value>,
+    metadata_path: &Path,
+    contract_id: &str,
+) -> Result<VerificationStatus, EvalError> {
+    let status = provenance
+        .get("verification_status")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("pending")
+        .trim()
+        .to_ascii_lowercase();
+
+    match status.as_str() {
+        "verified" => Ok(VerificationStatus::Verified),
+        "pending" => Ok(VerificationStatus::Pending),
+        _ => Err(EvalError::InvalidManifest {
+            message: format!(
+                "contract `{contract_id}` metadata `{}` has invalid verification_status `{status}`; expected `verified` or `pending`",
+                metadata_path.display()
+            ),
+        }),
+    }
+}
+
+fn looks_https_repo_url(value: &str) -> bool {
+    let Some(remainder) = value.strip_prefix("https://") else {
+        return false;
+    };
+    let mut parts = remainder.splitn(2, '/');
+    let host = parts.next().unwrap_or("");
+    let path = parts.next().unwrap_or("");
+    !host.is_empty() && host.contains('.') && !path.is_empty()
 }
 
 fn looks_placeholder_value(value: &str) -> bool {
