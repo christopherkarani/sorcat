@@ -1,6 +1,6 @@
 mod support;
 
-use sorcat_core::{CoreErrorKind, decode_module_summary, lift_function_to_ssa_summary};
+use sorcat_core::{decode_module_summary, lift_function_to_ssa_summary, CoreErrorKind};
 use support::load_wasm_fixture;
 
 #[test]
@@ -18,6 +18,28 @@ fn rejects_malformed_binary_with_explicit_error_kind() {
     assert!(
         error.message.contains("magic") || error.message.contains("malformed"),
         "malformed fixture error should explain decode failure source",
+    );
+}
+
+#[test]
+fn rejects_truncated_code_section_payload_as_malformed() {
+    let malformed = vec![
+        0x00, 0x61, 0x73, 0x6d, // magic
+        0x01, 0x00, 0x00, 0x00, // version
+        0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // type section: one () -> ()
+        0x03, 0x02, 0x01, 0x00, // function section: one function with type 0
+        0x0a, 0x05, 0x01, 0x02, 0x00, 0x0b, // truncated code section payload
+    ];
+
+    let error = decode_module_summary(&malformed)
+        .expect_err("truncated section payloads must be rejected as malformed");
+
+    assert_eq!(error.kind, CoreErrorKind::MalformedBinary);
+    assert!(
+        error
+            .message
+            .contains("section payload extends past end of binary"),
+        "error should identify truncated section payloads",
     );
 }
 
@@ -47,7 +69,8 @@ fn rejects_function_bodies_with_trailing_opcodes_after_end() {
         0x01, 0x00, 0x00, 0x00, // version
         0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // type section: one () -> ()
         0x03, 0x02, 0x01, 0x00, // function section: one function with type 0
-        0x0a, 0x05, 0x01, 0x03, 0x00, 0x0b, 0x0b, // code section: body has extra opcode after end
+        0x0a, 0x05, 0x01, 0x03, 0x00, 0x0b,
+        0x0b, // code section: body has extra opcode after end
     ];
 
     let error = decode_module_summary(&malformed)
@@ -79,7 +102,9 @@ fn rejects_else_without_active_if_block() {
 
     assert_eq!(error.kind, CoreErrorKind::MalformedBinary);
     assert!(
-        error.message.contains("else opcode without active if block"),
+        error
+            .message
+            .contains("else opcode without active if block"),
         "error should explain malformed else structure",
     );
 }
@@ -91,11 +116,12 @@ fn rejects_non_mvp_block_type_index_in_function_body() {
         0x01, 0x00, 0x00, 0x00, // version
         0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // type section: one () -> ()
         0x03, 0x02, 0x01, 0x00, // function section: one function with type 0
-        0x0a, 0x07, 0x01, 0x05, 0x00, 0x02, 0x00, 0x0b, 0x0b, // block with non-MVP block type (type index)
+        0x0a, 0x07, 0x01, 0x05, 0x00, 0x02, 0x00, 0x0b,
+        0x0b, // block with non-MVP block type (type index)
     ];
 
-    let error = decode_module_summary(&malformed)
-        .expect_err("non-MVP block type indices must be rejected");
+    let error =
+        decode_module_summary(&malformed).expect_err("non-MVP block type indices must be rejected");
 
     assert_eq!(
         error.kind,

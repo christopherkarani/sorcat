@@ -1,4 +1,4 @@
-use sorcat_core::{Instruction, decode_module_summary};
+use sorcat_core::{decode_module_summary, CoreErrorKind, Instruction};
 
 #[test]
 fn decoder_retains_instruction_immediates_in_deterministic_order() {
@@ -35,7 +35,15 @@ fn decoder_retains_instruction_immediates_in_deterministic_order() {
     assert_eq!(
         body.opcodes,
         vec![
-            "block", "local.get", "local.set", "i32.const", "br_if", "call", "br", "end", "end"
+            "block",
+            "local.get",
+            "local.set",
+            "i32.const",
+            "br_if",
+            "call",
+            "br",
+            "end",
+            "end"
         ],
         "expected opcode names to remain stable",
     );
@@ -56,3 +64,22 @@ fn decoder_retains_instruction_immediates_in_deterministic_order() {
     );
 }
 
+#[test]
+fn rejects_truncated_i64_const_immediate_as_malformed() {
+    let wasm = vec![
+        0x00, 0x61, 0x73, 0x6d, // magic
+        0x01, 0x00, 0x00, 0x00, // version
+        0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // type: () -> ()
+        0x03, 0x02, 0x01, 0x00, // function section: one function with type 0
+        0x07, 0x05, 0x01, 0x01, 0x66, 0x00, 0x00, // export "f"
+        0x0a, 0x05, 0x01, 0x03, 0x00, 0x42, 0x80, // truncated i64.const immediate payload
+    ];
+
+    let error = decode_module_summary(&wasm).expect_err("truncated immediates must be rejected");
+
+    assert_eq!(error.kind, CoreErrorKind::MalformedBinary);
+    assert!(
+        error.message.contains("i64.const literal"),
+        "error should name the malformed immediate context"
+    );
+}

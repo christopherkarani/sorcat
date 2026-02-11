@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use sorcat_soroban_knowledge::{SorobanSymbolKind, resolve_imports as resolve_knowledge_imports};
+use sorcat_soroban_knowledge::{resolve_imports as resolve_knowledge_imports, SorobanSymbolKind};
 use wasmparser::{Parser, Payload};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,33 +37,88 @@ pub enum Instruction {
     If,
     Else,
     End,
-    Br { depth: u32 },
-    BrIf { depth: u32 },
-    Call { function_index: u32 },
-    CallIndirect { type_index: u32, table_index: u32 },
-    LocalGet { local_index: u32 },
-    LocalSet { local_index: u32 },
-    LocalTee { local_index: u32 },
-    GlobalGet { global_index: u32 },
-    GlobalSet { global_index: u32 },
-    I32Const { value: i32 },
-    I64Const { value: i64 },
+    Br {
+        depth: u32,
+    },
+    BrIf {
+        depth: u32,
+    },
+    Call {
+        function_index: u32,
+    },
+    CallIndirect {
+        type_index: u32,
+        table_index: u32,
+    },
+    LocalGet {
+        local_index: u32,
+    },
+    LocalSet {
+        local_index: u32,
+    },
+    LocalTee {
+        local_index: u32,
+    },
+    GlobalGet {
+        global_index: u32,
+    },
+    GlobalSet {
+        global_index: u32,
+    },
+    I32Const {
+        value: i32,
+    },
+    I64Const {
+        value: i64,
+    },
+    I32Eqz,
     I32Eq,
     I32Ne,
     I32LtS,
+    I32LtU,
     I32GtS,
-    I32Eqz,
+    I32GtU,
+    I32LeS,
+    I32LeU,
+    I32GeS,
+    I32GeU,
     I64Eqz,
     I64Eq,
     I64Ne,
     I64LtS,
+    I64LtU,
     I64GtS,
+    I64GtU,
+    I64LeS,
+    I64LeU,
+    I64GeS,
+    I64GeU,
     I32Add,
     I32Sub,
     I32Mul,
+    I32DivS,
+    I32DivU,
+    I32RemS,
+    I32RemU,
+    I32And,
+    I32Or,
+    I32Xor,
+    I32Shl,
+    I32ShrS,
+    I32ShrU,
     I64Add,
     I64Sub,
     I64Mul,
+    I64DivS,
+    I64DivU,
+    I64RemS,
+    I64RemU,
+    I64And,
+    I64Or,
+    I64Xor,
+    I64Shl,
+    I64ShrS,
+    I64ShrU,
     Select,
     BrTable {
         targets: Vec<u32>,
@@ -532,9 +587,7 @@ pub fn resolve_soroban_imports_with_limits(
 ///
 /// This is a building block for Soroban-aware reconstruction (e.g. the
 /// `contractspecv0` / `contractmetav0` / `contractenvmetav0` sections).
-pub fn extract_custom_sections_by_name(
-    wasm: &[u8],
-) -> CoreResult<BTreeMap<String, Vec<Vec<u8>>>> {
+pub fn extract_custom_sections_by_name(wasm: &[u8]) -> CoreResult<BTreeMap<String, Vec<Vec<u8>>>> {
     extract_custom_sections_by_name_with_limits(wasm, &ParseLimits::default())
 }
 
@@ -594,7 +647,9 @@ pub fn decode_soroban_custom_sections_with_limits(
         merged
             .functions
             .sort_by(|left, right| left.name.cmp(&right.name));
-        merged.types.sort_by(|left, right| left.name.cmp(&right.name));
+        merged
+            .types
+            .sort_by(|left, right| left.name.cmp(&right.name));
         merged.errors.sort_by(|left, right| {
             left.code
                 .cmp(&right.code)
@@ -620,9 +675,11 @@ pub fn decode_soroban_custom_sections_with_limits(
                 }
                 merged.entries.extend(decoded.entries);
             }
-            merged
-                .entries
-                .sort_by(|left, right| left.key.cmp(&right.key).then_with(|| left.value.cmp(&right.value)));
+            merged.entries.sort_by(|left, right| {
+                left.key
+                    .cmp(&right.key)
+                    .then_with(|| left.value.cmp(&right.value))
+            });
             Some(merged)
         }
         None => None,
@@ -664,16 +721,15 @@ fn decode_contractspec_payload(payload: &[u8]) -> CoreResult<SorobanContractSpec
             "fn" => {
                 let name = required_part(parts.next(), "contractspecv0", "function name")?;
                 let input_spec = parts.next().ok_or_else(|| {
-                    malformed_error(
-                        "malformed contractspecv0 decode: missing function inputs",
-                    )
+                    malformed_error("malformed contractspecv0 decode: missing function inputs")
                 })?;
                 let output_spec = parts.next().ok_or_else(|| {
-                    malformed_error(
-                        "malformed contractspecv0 decode: missing function output",
-                    )
+                    malformed_error("malformed contractspecv0 decode: missing function output")
                 })?;
-                let doc = parts.next().map(|value| value.trim().to_string()).filter(|value| !value.is_empty());
+                let doc = parts
+                    .next()
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty());
                 let inputs = parse_named_type_list(input_spec, "contractspecv0 function inputs")?;
                 let output = if output_spec.trim().is_empty() {
                     None
@@ -719,7 +775,9 @@ fn decode_contractspec_payload(payload: &[u8]) -> CoreResult<SorobanContractSpec
                             .collect(),
                         None,
                     ),
-                    SorobanSpecTypeKind::Alias => (Vec::new(), Vec::new(), Some(payload.trim().to_string())),
+                    SorobanSpecTypeKind::Alias => {
+                        (Vec::new(), Vec::new(), Some(payload.trim().to_string()))
+                    }
                 };
 
                 types.push(SorobanSpecType {
@@ -738,7 +796,10 @@ fn decode_contractspec_payload(payload: &[u8]) -> CoreResult<SorobanContractSpec
                         "malformed contractspecv0 decode: invalid error code `{code_text}`"
                     ))
                 })?;
-                let doc = parts.next().map(|value| value.trim().to_string()).filter(|value| !value.is_empty());
+                let doc = parts
+                    .next()
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty());
                 errors.push(SorobanSpecError {
                     name: name.trim().to_string(),
                     code,
@@ -1394,8 +1455,7 @@ fn parse_function_body(bytes: &[u8], limits: &ParseLimits) -> CoreResult<Decoded
             }
             0x11 => {
                 let type_index = read_var_u32(bytes, &mut offset, "call_indirect type index")?;
-                let table_index =
-                    read_var_u32(bytes, &mut offset, "call_indirect table index")?;
+                let table_index = read_var_u32(bytes, &mut offset, "call_indirect table index")?;
                 Instruction::CallIndirect {
                     type_index,
                     table_index,
@@ -1403,28 +1463,23 @@ fn parse_function_body(bytes: &[u8], limits: &ParseLimits) -> CoreResult<Decoded
             }
             0x1a => Instruction::Drop,
             0x20 => {
-                let local_index =
-                    read_var_u32(bytes, &mut offset, "local.get local index")?;
+                let local_index = read_var_u32(bytes, &mut offset, "local.get local index")?;
                 Instruction::LocalGet { local_index }
             }
             0x21 => {
-                let local_index =
-                    read_var_u32(bytes, &mut offset, "local.set local index")?;
+                let local_index = read_var_u32(bytes, &mut offset, "local.set local index")?;
                 Instruction::LocalSet { local_index }
             }
             0x22 => {
-                let local_index =
-                    read_var_u32(bytes, &mut offset, "local.tee local index")?;
+                let local_index = read_var_u32(bytes, &mut offset, "local.tee local index")?;
                 Instruction::LocalTee { local_index }
             }
             0x23 => {
-                let global_index =
-                    read_var_u32(bytes, &mut offset, "global.get global index")?;
+                let global_index = read_var_u32(bytes, &mut offset, "global.get global index")?;
                 Instruction::GlobalGet { global_index }
             }
             0x24 => {
-                let global_index =
-                    read_var_u32(bytes, &mut offset, "global.set global index")?;
+                let global_index = read_var_u32(bytes, &mut offset, "global.set global index")?;
                 Instruction::GlobalSet { global_index }
             }
             0x41 => {
@@ -1435,22 +1490,54 @@ fn parse_function_body(bytes: &[u8], limits: &ParseLimits) -> CoreResult<Decoded
                 let value = read_var_i64(bytes, &mut offset, "i64.const literal")?;
                 Instruction::I64Const { value }
             }
+            0x45 => Instruction::I32Eqz,
             0x46 => Instruction::I32Eq,
             0x47 => Instruction::I32Ne,
             0x48 => Instruction::I32LtS,
+            0x49 => Instruction::I32LtU,
             0x4a => Instruction::I32GtS,
-            0x45 => Instruction::I32Eqz,
+            0x4b => Instruction::I32GtU,
+            0x4c => Instruction::I32LeS,
+            0x4d => Instruction::I32LeU,
+            0x4e => Instruction::I32GeS,
+            0x4f => Instruction::I32GeU,
             0x50 => Instruction::I64Eqz,
             0x51 => Instruction::I64Eq,
             0x52 => Instruction::I64Ne,
             0x53 => Instruction::I64LtS,
+            0x54 => Instruction::I64LtU,
             0x55 => Instruction::I64GtS,
+            0x56 => Instruction::I64GtU,
+            0x57 => Instruction::I64LeS,
+            0x58 => Instruction::I64LeU,
+            0x59 => Instruction::I64GeS,
+            0x5a => Instruction::I64GeU,
             0x6a => Instruction::I32Add,
             0x6b => Instruction::I32Sub,
             0x6c => Instruction::I32Mul,
+            0x6d => Instruction::I32DivS,
+            0x6e => Instruction::I32DivU,
+            0x6f => Instruction::I32RemS,
+            0x70 => Instruction::I32RemU,
+            0x71 => Instruction::I32And,
+            0x72 => Instruction::I32Or,
+            0x73 => Instruction::I32Xor,
+            0x74 => Instruction::I32Shl,
+            0x75 => Instruction::I32ShrS,
+            0x76 => Instruction::I32ShrU,
             0x7c => Instruction::I64Add,
             0x7d => Instruction::I64Sub,
             0x7e => Instruction::I64Mul,
+            0x7f => Instruction::I64DivS,
+            0x80 => Instruction::I64DivU,
+            0x81 => Instruction::I64RemS,
+            0x82 => Instruction::I64RemU,
+            0x83 => Instruction::I64And,
+            0x84 => Instruction::I64Or,
+            0x85 => Instruction::I64Xor,
+            0x86 => Instruction::I64Shl,
+            0x87 => Instruction::I64ShrS,
+            0x88 => Instruction::I64ShrU,
             0x1b => Instruction::Select,
             0x0e => {
                 let target_count = read_var_u32(bytes, &mut offset, "br_table target count")?;
@@ -1459,8 +1546,7 @@ fn parse_function_body(bytes: &[u8], limits: &ParseLimits) -> CoreResult<Decoded
                 for _ in 0..target_count {
                     targets.push(read_var_u32(bytes, &mut offset, "br_table target label")?);
                 }
-                let default_target =
-                    read_var_u32(bytes, &mut offset, "br_table default label")?;
+                let default_target = read_var_u32(bytes, &mut offset, "br_table default label")?;
                 Instruction::BrTable {
                     targets,
                     default_target,
@@ -1531,22 +1617,54 @@ fn instruction_name(instruction: &Instruction) -> &'static str {
         Instruction::GlobalSet { .. } => "global.set",
         Instruction::I32Const { .. } => "i32.const",
         Instruction::I64Const { .. } => "i64.const",
+        Instruction::I32Eqz => "i32.eqz",
         Instruction::I32Eq => "i32.eq",
         Instruction::I32Ne => "i32.ne",
         Instruction::I32LtS => "i32.lt_s",
+        Instruction::I32LtU => "i32.lt_u",
         Instruction::I32GtS => "i32.gt_s",
-        Instruction::I32Eqz => "i32.eqz",
+        Instruction::I32GtU => "i32.gt_u",
+        Instruction::I32LeS => "i32.le_s",
+        Instruction::I32LeU => "i32.le_u",
+        Instruction::I32GeS => "i32.ge_s",
+        Instruction::I32GeU => "i32.ge_u",
         Instruction::I64Eqz => "i64.eqz",
         Instruction::I64Eq => "i64.eq",
         Instruction::I64Ne => "i64.ne",
         Instruction::I64LtS => "i64.lt_s",
+        Instruction::I64LtU => "i64.lt_u",
         Instruction::I64GtS => "i64.gt_s",
+        Instruction::I64GtU => "i64.gt_u",
+        Instruction::I64LeS => "i64.le_s",
+        Instruction::I64LeU => "i64.le_u",
+        Instruction::I64GeS => "i64.ge_s",
+        Instruction::I64GeU => "i64.ge_u",
         Instruction::I32Add => "i32.add",
         Instruction::I32Sub => "i32.sub",
         Instruction::I32Mul => "i32.mul",
+        Instruction::I32DivS => "i32.div_s",
+        Instruction::I32DivU => "i32.div_u",
+        Instruction::I32RemS => "i32.rem_s",
+        Instruction::I32RemU => "i32.rem_u",
+        Instruction::I32And => "i32.and",
+        Instruction::I32Or => "i32.or",
+        Instruction::I32Xor => "i32.xor",
+        Instruction::I32Shl => "i32.shl",
+        Instruction::I32ShrS => "i32.shr_s",
+        Instruction::I32ShrU => "i32.shr_u",
         Instruction::I64Add => "i64.add",
         Instruction::I64Sub => "i64.sub",
         Instruction::I64Mul => "i64.mul",
+        Instruction::I64DivS => "i64.div_s",
+        Instruction::I64DivU => "i64.div_u",
+        Instruction::I64RemS => "i64.rem_s",
+        Instruction::I64RemU => "i64.rem_u",
+        Instruction::I64And => "i64.and",
+        Instruction::I64Or => "i64.or",
+        Instruction::I64Xor => "i64.xor",
+        Instruction::I64Shl => "i64.shl",
+        Instruction::I64ShrS => "i64.shr_s",
+        Instruction::I64ShrU => "i64.shr_u",
         Instruction::Select => "select",
         Instruction::BrTable { .. } => "br_table",
         Instruction::Drop => "drop",
@@ -1559,19 +1677,51 @@ fn instruction_to_ssa_instruction(instruction: &Instruction) -> Option<&'static 
         Instruction::I32Add => Some("i32.add"),
         Instruction::I32Sub => Some("i32.sub"),
         Instruction::I32Mul => Some("i32.mul"),
+        Instruction::I32DivS => Some("i32.div_s"),
+        Instruction::I32DivU => Some("i32.div_u"),
+        Instruction::I32RemS => Some("i32.rem_s"),
+        Instruction::I32RemU => Some("i32.rem_u"),
+        Instruction::I32And => Some("i32.and"),
+        Instruction::I32Or => Some("i32.or"),
+        Instruction::I32Xor => Some("i32.xor"),
+        Instruction::I32Shl => Some("i32.shl"),
+        Instruction::I32ShrS => Some("i32.shr_s"),
+        Instruction::I32ShrU => Some("i32.shr_u"),
         Instruction::I64Add => Some("i64.add"),
         Instruction::I64Sub => Some("i64.sub"),
         Instruction::I64Mul => Some("i64.mul"),
+        Instruction::I64DivS => Some("i64.div_s"),
+        Instruction::I64DivU => Some("i64.div_u"),
+        Instruction::I64RemS => Some("i64.rem_s"),
+        Instruction::I64RemU => Some("i64.rem_u"),
+        Instruction::I64And => Some("i64.and"),
+        Instruction::I64Or => Some("i64.or"),
+        Instruction::I64Xor => Some("i64.xor"),
+        Instruction::I64Shl => Some("i64.shl"),
+        Instruction::I64ShrS => Some("i64.shr_s"),
+        Instruction::I64ShrU => Some("i64.shr_u"),
+        Instruction::I32Eqz => Some("i32.eqz"),
         Instruction::I32Eq => Some("i32.eq"),
         Instruction::I32Ne => Some("i32.ne"),
         Instruction::I32LtS => Some("i32.lt_s"),
+        Instruction::I32LtU => Some("i32.lt_u"),
         Instruction::I32GtS => Some("i32.gt_s"),
-        Instruction::I32Eqz => Some("i32.eqz"),
+        Instruction::I32GtU => Some("i32.gt_u"),
+        Instruction::I32LeS => Some("i32.le_s"),
+        Instruction::I32LeU => Some("i32.le_u"),
+        Instruction::I32GeS => Some("i32.ge_s"),
+        Instruction::I32GeU => Some("i32.ge_u"),
         Instruction::I64Eqz => Some("i64.eqz"),
         Instruction::I64Eq => Some("i64.eq"),
         Instruction::I64Ne => Some("i64.ne"),
         Instruction::I64LtS => Some("i64.lt_s"),
+        Instruction::I64LtU => Some("i64.lt_u"),
         Instruction::I64GtS => Some("i64.gt_s"),
+        Instruction::I64GtU => Some("i64.gt_u"),
+        Instruction::I64LeS => Some("i64.le_s"),
+        Instruction::I64LeU => Some("i64.le_u"),
+        Instruction::I64GeS => Some("i64.ge_s"),
+        Instruction::I64GeU => Some("i64.ge_u"),
         Instruction::Call { .. } => Some("call"),
         Instruction::LocalGet { .. } => Some("local.get"),
         Instruction::LocalSet { .. } => Some("local.set"),
