@@ -1,5 +1,8 @@
 # Review Round 5 (R5) — Spec Compliance Audit
 
+Superseded on February 12, 2026 by `docs/reviews/review-round-7.md`.
+This document is retained as historical baseline context only and is not the authoritative compliance status.
+
 Date: 2026-02-10  
 Scope: current repository state vs external spec "Soroban Specialized Reverse Engineering Tool" (Q1 2026)
 
@@ -74,4 +77,3 @@ Treat the current codebase as a deterministic scaffolding and measurement harnes
 - The current CLI and harness are deterministic and test-green, but they do not satisfy the external spec for Soroban-aware WAT/Rust reconstruction.
 - Locked-corpus accuracy gates are currently circular because the "original source" is the tool’s own pseudo-rust output format.
 - Core parsing, Soroban knowledge depth (builtins/XDR/custom sections), and WAT/Rust backends require major work before the spec can be claimed as met.
-

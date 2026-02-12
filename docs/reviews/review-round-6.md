@@ -1,5 +1,8 @@
 # Review Round 6 (R6) — Submission Hardening Audit
 
+Superseded on February 12, 2026 by `docs/reviews/review-round-7.md`.
+This document is retained as historical in-progress validation context only and is not the authoritative compliance status.
+
 Date: 2026-02-11  
 Scope: external spec "Soroban Specialized Reverse Engineering Tool" (Q1 2026)
 

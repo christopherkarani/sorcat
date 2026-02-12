@@ -1,5 +1,8 @@
 # Review Round 7 (R7) — Final Spec-Closure Pass
 
+Authoritative spec-compliance snapshot as of February 12, 2026.
+Prior rounds (`review-round-5.md`, `review-round-6.md`) are historical and superseded.
+
 Date: 2026-02-11  
 Scope: external spec "Soroban Specialized Reverse Engineering Tool" (Q1 2026)
 

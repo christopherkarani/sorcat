@@ -20,3 +20,13 @@ jobs:
 
       - name: Verify Locked-Corpus Thresholds
         run: cargo run -p sorcat-cli -- score
+
+      - name: Generate Deterministic Spec Evidence Artifacts
+        run: scripts/ci_spec_evidence.sh
+
+      - name: Upload Spec Evidence Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sorcat-spec-evidence
+          path: target/spec-evidence
+          if-no-files-found: error

@@ -44,6 +44,12 @@ This command validates:
 4. provenance verification state (`submission_ready=true|false`)
 5. deterministic corpus gap metrics (`unsupported_opcode_events`, `fallback_comment_total`)
 
+Deterministic spec-evidence artifacts are generated in CI under `target/spec-evidence` and uploaded as the `sorcat-spec-evidence` workflow artifact. The same capture can be run locally via:
+
+```bash
+scripts/ci_spec_evidence.sh
+```
+
 ## Capability Matrix (Q1 2026 Spec)
 
 | Capability | Status | Notes |
