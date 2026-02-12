@@ -50,6 +50,41 @@ Deterministic spec-evidence artifacts are generated in CI under `target/spec-evi
 scripts/ci_spec_evidence.sh
 ```
 
+## Reviewer Quickstart
+
+Run these commands from repo root:
+
+```bash
+# 1) Full test gate
+cargo test --workspace --no-fail-fast
+
+# 2) Locked-corpus score gate
+cargo run -p sorcat-cli -- score
+
+# 3) Submission-ready provenance gate
+cargo run -p sorcat-cli -- score --require-submission-ready
+
+# 4) Deterministic evidence bundle (same shape as CI artifact)
+scripts/ci_spec_evidence.sh
+```
+
+What to check in output:
+
+1. `contracts_scored=80`
+2. `mean_ast_score` is `>= 0.900000`
+3. `builtin_coverage` is `>= 0.980000`
+4. `submission_ready=true` and `provenance_pending_contracts=0`
+5. `unsupported_opcode_events=0` and `fallback_comment_total=0`
+
+Where to inspect evidence files:
+
+1. Local: `target/spec-evidence/`
+2. CI: artifact named `sorcat-spec-evidence`
+
+Authoritative compliance review snapshot:
+
+1. `docs/reviews/review-round-7.md`
+
 ## Capability Matrix (Q1 2026 Spec)
 
 | Capability | Status | Notes |
