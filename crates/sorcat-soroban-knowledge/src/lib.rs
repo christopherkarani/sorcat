@@ -381,15 +381,13 @@ struct EnvJsonPack {
 
 impl EnvJsonPack {
     fn from_embedded(version_label: &str, json: &str) -> Self {
-        let parsed: EnvJson = match serde_json::from_str(json) {
-            Ok(value) => value,
-            Err(_error) => {
-                return Self {
-                    version_label: version_label.to_string(),
-                    functions: BTreeMap::new(),
-                };
-            }
-        };
+        let parsed: EnvJson = serde_json::from_str(json).unwrap_or_else(|error| {
+            panic!(
+                "sorcat-soroban-knowledge: embedded JSON for version {version_label} \
+                 is corrupt and cannot be deserialized: {error}. This is a compile-time \
+                 invariant violation — the embedded data must always be valid."
+            )
+        });
 
         let protocol = parse_protocol(version_label);
 

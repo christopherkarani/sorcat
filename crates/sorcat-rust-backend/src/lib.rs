@@ -8,7 +8,6 @@ use sorcat_core::{
     decode_soroban_custom_sections,
 };
 use sorcat_soroban_knowledge::resolve_imports as resolve_soroban_knowledge_imports;
-use wasmparser::{Parser, Payload, TypeRef, ValType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RustBackendError {
@@ -41,7 +40,7 @@ impl From<CoreError> for RustBackendError {
 pub fn reconstruct_module_from_wasm(wasm: &[u8]) -> Result<String, RustBackendError> {
     let summary = decode_module_summary(wasm)?;
     let soroban_sections = decode_soroban_custom_sections(wasm)?;
-    let wasm_context = parse_wasm_module_context(wasm)?;
+    let wasm_context = wasm_context_from_summary(&summary);
     reconstruct_module_with_wasm_context(&summary, &wasm_context, &soroban_sections)
 }
 
@@ -90,115 +89,41 @@ struct ImportRenderPlan {
     resolution_reason: String,
 }
 
-fn parse_wasm_module_context(wasm: &[u8]) -> Result<WasmModuleContext, RustBackendError> {
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    struct RawFunctionImport {
-        module: String,
-        name: String,
-        type_index: u32,
-    }
+/// Build a `WasmModuleContext` from the already-decoded `DecodedModuleSummary`,
+/// avoiding a redundant second parse of the WASM binary.
+fn wasm_context_from_summary(summary: &DecodedModuleSummary) -> WasmModuleContext {
+    let imports: Vec<WasmImportFunction> = summary
+        .import_functions
+        .iter()
+        .map(|import| WasmImportFunction {
+            module: import.module.clone(),
+            name: import.name.clone(),
+            params: import.params.clone(),
+            results: import.results.clone(),
+        })
+        .collect();
 
-    let mut types: Vec<(Vec<String>, Vec<String>)> = Vec::new();
-    let mut raw_imports = Vec::new();
-    let mut defined_type_indices = Vec::new();
+    let mut signatures: Vec<WasmFunctionSignature> = imports
+        .iter()
+        .map(|import| WasmFunctionSignature {
+            params: import.params.clone(),
+            results: import.results.clone(),
+        })
+        .collect();
 
-    for payload in Parser::new(0).parse_all(wasm) {
-        let payload = payload.map_err(|error| RustBackendError::InvalidInput {
-            field: "wasm",
-            message: format!("wasmparser failed: {error}"),
-        })?;
-
-        match payload {
-            Payload::TypeSection(reader) => {
-                types = reader
-                    .into_iter_err_on_gc_types()
-                    .map(|func| {
-                        let func = func.map_err(|error| RustBackendError::InvalidInput {
-                            field: "wasm.type_section",
-                            message: format!("failed to parse type section: {error}"),
-                        })?;
-                        let params = func.params().iter().map(render_valtype).collect();
-                        let results = func.results().iter().map(render_valtype).collect();
-                        Ok((params, results))
-                    })
-                    .collect::<Result<Vec<_>, RustBackendError>>()?;
-            }
-            Payload::ImportSection(reader) => {
-                for import in reader {
-                    let import = import.map_err(|error| RustBackendError::InvalidInput {
-                        field: "wasm.import_section",
-                        message: format!("failed to parse import section: {error}"),
-                    })?;
-                    let TypeRef::Func(type_index) = import.ty else {
-                        continue;
-                    };
-                    raw_imports.push(RawFunctionImport {
-                        module: import.module.to_string(),
-                        name: import.name.to_string(),
-                        type_index,
-                    });
-                }
-            }
-            Payload::FunctionSection(reader) => {
-                for entry in reader {
-                    let type_index = entry.map_err(|error| RustBackendError::InvalidInput {
-                        field: "wasm.function_section",
-                        message: format!("failed to parse function section: {error}"),
-                    })?;
-                    defined_type_indices.push(type_index);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let mut imports = Vec::with_capacity(raw_imports.len());
-    let mut signatures = Vec::with_capacity(raw_imports.len() + defined_type_indices.len());
-
-    for import in raw_imports {
-        let signature = resolve_type_signature(&types, import.type_index, "wasm.import_section.type_index")?;
-        imports.push(WasmImportFunction {
-            module: import.module,
-            name: import.name,
-            params: signature.params.clone(),
-            results: signature.results.clone(),
+    // Append defined function signatures in function_index order.
+    // function_bodies may be sorted by symbol, so re-sort by function_index
+    // to ensure signatures align with global function indices.
+    let mut defined: Vec<&FunctionBodySummary> = summary.function_bodies.iter().collect();
+    defined.sort_by_key(|body| body.function_index);
+    for body in defined {
+        signatures.push(WasmFunctionSignature {
+            params: body.params.clone(),
+            results: body.results.clone(),
         });
-        signatures.push(signature);
     }
 
-    for type_index in defined_type_indices {
-        signatures.push(resolve_type_signature(
-            &types,
-            type_index,
-            "wasm.function_section.type_index",
-        )?);
-    }
-
-    Ok(WasmModuleContext { imports, signatures })
-}
-
-fn resolve_type_signature(
-    types: &[(Vec<String>, Vec<String>)],
-    type_index: u32,
-    field: &'static str,
-) -> Result<WasmFunctionSignature, RustBackendError> {
-    let idx = usize::try_from(type_index).map_err(|_| RustBackendError::InvalidInput {
-        field,
-        message: format!("unsupported type index {type_index}"),
-    })?;
-    let (params, results) = types.get(idx).ok_or_else(|| RustBackendError::InvalidInput {
-        field,
-        message: format!("missing type for index {type_index}"),
-    })?;
-
-    Ok(WasmFunctionSignature {
-        params: params.clone(),
-        results: results.clone(),
-    })
-}
-
-fn render_valtype(value: &ValType) -> String {
-    value.to_string()
+    WasmModuleContext { imports, signatures }
 }
 
 pub fn reconstruct_module(summary: &DecodedModuleSummary) -> Result<String, RustBackendError> {
@@ -1763,12 +1688,16 @@ mod tests {
                 FunctionBodySummary {
                     function_index: 1,
                     symbol: "zeta".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },
                 FunctionBodySummary {
                     function_index: 2,
                     symbol: "alpha".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["local.get".to_string(), "end".to_string()],
                     instructions: vec![],
                 },
@@ -1829,6 +1758,8 @@ mod tests {
             function_bodies: vec![FunctionBodySummary {
                 function_index: 0,
                 symbol: "f".to_string(),
+                params: vec![],
+                results: vec![],
                 opcodes: vec!["end".to_string()],
                 instructions: vec![],
             }],
@@ -1871,12 +1802,16 @@ mod tests {
                 FunctionBodySummary {
                     function_index: 1,
                     symbol: "fn-a".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },
                 FunctionBodySummary {
                     function_index: 2,
                     symbol: "fn_a".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },
@@ -1911,6 +1846,8 @@ mod tests {
             function_bodies: vec![FunctionBodySummary {
                 function_index: 1,
                 symbol: "f".to_string(),
+                params: vec![],
+                results: vec![],
                 opcodes: vec!["i64.mul".to_string(), "end".to_string()],
                 instructions: vec![],
             }],
@@ -1933,6 +1870,8 @@ mod tests {
             function_bodies: vec![FunctionBodySummary {
                 function_index: 1,
                 symbol: "type".to_string(),
+                params: vec![],
+                results: vec![],
                 opcodes: vec!["end".to_string()],
                 instructions: vec![],
             }],

@@ -39,6 +39,12 @@ pub struct Thresholds {
     pub min_builtin_coverage: f64,
 }
 
+/// Maximum number of AST nodes permitted per tree in tree edit distance
+/// computation. Beyond this limit, the O(n²) memory allocation becomes
+/// prohibitive (e.g. 10k nodes → ~800MB). Inputs exceeding this limit are
+/// rejected with `EvalError::InvalidInput`.
+pub const MAX_AST_NODE_COUNT: usize = 5_000;
+
 pub fn compute_ast_score(
     original: &NormalizedAst,
     reconstructed: &NormalizedAst,
@@ -63,6 +69,25 @@ pub fn compute_ast_score(
         reconstructed.node_count,
         reconstructed_tree.node_count(),
     )?;
+
+    if original_tree.node_count() > MAX_AST_NODE_COUNT {
+        return Err(EvalError::InvalidInput {
+            field: "normalized_ast.node_count",
+            message: format!(
+                "original AST node count ({}) exceeds maximum allowed ({MAX_AST_NODE_COUNT})",
+                original_tree.node_count()
+            ),
+        });
+    }
+    if reconstructed_tree.node_count() > MAX_AST_NODE_COUNT {
+        return Err(EvalError::InvalidInput {
+            field: "normalized_ast.node_count",
+            message: format!(
+                "reconstructed AST node count ({}) exceeds maximum allowed ({MAX_AST_NODE_COUNT})",
+                reconstructed_tree.node_count()
+            ),
+        });
+    }
 
     let max_node_count = original_tree.node_count().max(reconstructed_tree.node_count());
     let tree_edit_distance =
@@ -420,13 +445,25 @@ impl<'a> PostorderTree<'a> {
     }
 }
 
-fn collect_postorder(tree: &AstTree, node_id: usize, output: &mut Vec<usize>) {
-    for &child_id in tree.children(node_id) {
-        collect_postorder(tree, child_id, output);
+/// Iterative postorder traversal to avoid stack overflow on deeply nested ASTs.
+fn collect_postorder(tree: &AstTree, root: usize, output: &mut Vec<usize>) {
+    // Each stack frame: (node_id, next_child_index)
+    let mut stack: Vec<(usize, usize)> = vec![(root, 0)];
+    while let Some((node_id, child_idx)) = stack.last_mut() {
+        let children = tree.children(*node_id);
+        if *child_idx < children.len() {
+            let child = children[*child_idx];
+            *child_idx += 1;
+            stack.push((child, 0));
+        } else {
+            let node_id = *node_id;
+            stack.pop();
+            output.push(node_id);
+        }
     }
-    output.push(node_id);
 }
 
+/// Iterative leftmost-leaf computation to avoid stack overflow on deeply nested ASTs.
 fn leftmost_leaf_node(
     tree: &AstTree,
     node_id: usize,
@@ -436,11 +473,32 @@ fn leftmost_leaf_node(
         return cached;
     }
 
-    let leftmost = if tree.children(node_id).is_empty() {
-        node_id
-    } else {
-        leftmost_leaf_node(tree, tree.children(node_id)[0], cache)
-    };
-    cache[node_id] = Some(leftmost);
-    leftmost
+    let mut current = node_id;
+    while !tree.children(current).is_empty() {
+        let first_child = tree.children(current)[0];
+        if let Some(cached) = cache[first_child] {
+            // Cache hit on descendant — propagate upward.
+            let result = cached;
+            // Walk back from node_id to first_child, caching along the way.
+            let mut walk = node_id;
+            while walk != first_child {
+                cache[walk] = Some(result);
+                walk = tree.children(walk)[0];
+            }
+            return result;
+        }
+        current = first_child;
+    }
+
+    // `current` is a leaf — cache the entire path from node_id to current.
+    let result = current;
+    let mut walk = node_id;
+    loop {
+        cache[walk] = Some(result);
+        if walk == current {
+            break;
+        }
+        walk = tree.children(walk)[0];
+    }
+    result
 }

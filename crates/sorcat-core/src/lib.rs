@@ -132,6 +132,8 @@ pub enum Instruction {
 pub struct FunctionBodySummary {
     pub function_index: u32,
     pub symbol: String,
+    pub params: Vec<String>,
+    pub results: Vec<String>,
     pub opcodes: Vec<String>,
     pub instructions: Vec<Instruction>,
 }
@@ -353,9 +355,13 @@ pub fn decode_module_summary_with_limits(
             .cloned()
             .unwrap_or_else(|| format!("func_{global_index}"));
 
+        let signature = parsed.function_type_for_index(global_index)?;
+
         function_bodies.push(FunctionBodySummary {
             function_index: global_index_u32,
             symbol,
+            params: signature.params.clone(),
+            results: signature.results.clone(),
             opcodes: render_opcodes(&body.instructions),
             instructions: body.instructions.clone(),
         });
@@ -370,10 +376,19 @@ pub fn decode_module_summary_with_limits(
     })
 }
 
+/// Build an approximate control-flow graph sketch for a single exported function.
+///
+/// **Important:** This is a template-based approximation, not a real CFG
+/// reconstruction algorithm. It detects the presence of `Loop` or `If`/`Else`
+/// instructions and returns a fixed template graph. It does not handle nested
+/// control flow, multiple loops, `br_table`, or mixed constructs correctly.
+/// The output is suitable for high-level structural annotation (e.g. the
+/// `explain` CLI command) but must not be relied upon for analysis correctness.
 pub fn build_cfg_summary(wasm: &[u8], export: &str) -> CoreResult<CfgSummary> {
     build_cfg_summary_with_limits(wasm, export, &ParseLimits::default())
 }
 
+/// Template-based CFG sketch. See [`build_cfg_summary`] for limitations.
 pub fn build_cfg_summary_with_limits(
     wasm: &[u8],
     export: &str,
@@ -497,10 +512,19 @@ pub fn build_cfg_summary_with_limits(
     })
 }
 
+/// Build an approximate SSA-like instruction summary for a single exported function.
+///
+/// **Important:** This is a template-based approximation, not a real SSA lifting
+/// pass. It filters instructions through a string-rendering function and heuristically
+/// sets `phi_nodes` to 0 or 1 based on the presence of `If`/`Else`. It does not
+/// perform def-use analysis, value numbering, or actual phi-node insertion.
+/// The output is suitable for high-level annotation (e.g. the `explain` CLI
+/// command) but must not be relied upon for analysis correctness.
 pub fn lift_function_to_ssa_summary(wasm: &[u8], export: &str) -> CoreResult<SsaSummary> {
     lift_function_to_ssa_summary_with_limits(wasm, export, &ParseLimits::default())
 }
 
+/// Template-based SSA sketch. See [`lift_function_to_ssa_summary`] for limitations.
 pub fn lift_function_to_ssa_summary_with_limits(
     wasm: &[u8],
     export: &str,
@@ -667,6 +691,10 @@ pub fn decode_soroban_custom_sections_with_limits(
             };
             for payload in payloads {
                 let decoded = decode_contractmeta_payload(payload)?;
+                // First-wins strategy: when multiple contractmetav0 payloads
+                // provide different contract_name or version values, the first
+                // non-None value wins. This is intentional for deterministic
+                // merging of forward-compatible section growth.
                 if merged.contract_name.is_none() {
                     merged.contract_name = decoded.contract_name;
                 }
@@ -905,6 +933,10 @@ fn decode_contractenvmeta_payload(payload: &[u8]) -> CoreResult<SorobanContractE
     })
 }
 
+/// Select the env meta entry with the higher protocol version.
+/// Tie-breaking: when both have equal protocol versions, the first entry wins.
+/// This is a deterministic, stable strategy that ensures consistent output
+/// regardless of payload ordering in the binary.
 fn select_env_meta(
     first: SorobanContractEnvMeta,
     second: SorobanContractEnvMeta,

@@ -467,12 +467,16 @@ mod tests {
                 FunctionBodySummary {
                     function_index: 1,
                     symbol: "zeta".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },
                 FunctionBodySummary {
                     function_index: 2,
                     symbol: "alpha".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["local.get".to_string(), "end".to_string()],
                     instructions: vec![],
                 },
@@ -626,12 +630,16 @@ mod tests {
                 FunctionBodySummary {
                     function_index: 1,
                     symbol: "fn-a".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },
                 FunctionBodySummary {
                     function_index: 2,
                     symbol: "fn_a".to_string(),
+                    params: vec![],
+                    results: vec![],
                     opcodes: vec!["end".to_string()],
                     instructions: vec![],
                 },

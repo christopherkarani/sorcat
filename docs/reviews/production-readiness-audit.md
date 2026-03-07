@@ -247,13 +247,15 @@ Error messages include full filesystem paths, which could leak system layout inf
 | sorcat-core | 10 | ~27 | Superficial per-feature coverage |
 | sorcat-eval | 5 | ~25 | Stronger, but weak on edge cases |
 | sorcat-soroban-knowledge | 1 | ~6 | Adequate for happy path |
-| sorcat-rust-backend | 0 | 0 | **No dedicated tests** |
-| sorcat-wat-backend | 0 | 0 | **No dedicated tests** |
+| sorcat-rust-backend | 1 (integration) | ~8 | **Added in this audit** |
+| sorcat-wat-backend | 1 (inline) | ~7 | Adequate (determinism, sorting, collisions, annotations) |
 | sorcat-cli | 0 | 0 | **No dedicated tests** |
 
-### 7.2 Critical Coverage Gaps — **Major**
+**Correction:** The original audit incorrectly reported sorcat-wat-backend as having zero tests. It has 7 inline tests (`#[cfg(test)] mod tests`) covering determinism, sorting, WAT rendering, Soroban annotations, input validation, and symbol collision handling.
 
-**No tests for sorcat-rust-backend or sorcat-wat-backend.** These are the two output-producing modules. The only validation they receive is indirect, through the corpus evaluation pipeline (which itself depends on the template-based CFG/SSA). Bugs in code reconstruction are not caught by any test.
+### 7.2 Critical Coverage Gaps — **Major** (Partially Addressed)
+
+**sorcat-rust-backend now has integration tests** (added as part of this audit's remediation). **sorcat-cli still has no tests.** The CLI entry point (`run_from`) is not tested. Error display formatting, argument parsing edge cases, and exit code behavior are unvalidated.
 
 **No CLI integration tests.** The CLI entry point (`run_from`) is not tested. Error display formatting, argument parsing edge cases, and exit code behavior are unvalidated.
 
