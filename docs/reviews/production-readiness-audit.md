@@ -9,30 +9,34 @@
 
 ## 1. Executive Summary
 
-### Overall Production Readiness Score: 5/10
+### Overall Production Readiness Score: 6/10
 
-The project demonstrates strong discipline in determinism, input validation, and defensive error handling. However, it contains a **critical architectural deception**: the CFG reconstruction and SSA lifting modules are not real implementations — they are hardcoded template dispatchers that pattern-match on the presence of `Loop` or `If`/`Else` instructions and return canned block graphs. This means the core analysis pipeline is fundamentally incomplete for any non-trivial WASM function. The test suite, while superficially broad, is thin on per-module edge cases and masks the template-based nature of these critical components.
+The project demonstrates strong discipline in determinism, input validation, and defensive error handling. The CFG reconstruction and SSA lifting modules are hardcoded template dispatchers that pattern-match on the presence of `Loop` or `If`/`Else` instructions and return canned block graphs. Crucially, these are **only consumed by the `explain` CLI command** — the core reconstruction backends (`decompile`, `score`, `diff`) do not depend on them. This limits the blast radius but the APIs remain a trap for future consumers. The test suite, while superficially broad, is thin on per-module edge cases and masks the template-based nature of these components.
 
 ### Top 5 Critical Risks
 
 | # | Risk | Severity |
 |---|------|----------|
-| 1 | **CFG reconstruction is a hardcoded template, not a real algorithm** — any function with nested control flow, multiple loops, or mixed constructs produces incorrect results | Blocker |
-| 2 | **SSA lifting is a hardcoded template** — phi node count is `bool(has_if && has_else)`, not computed from actual data flow | Blocker |
+| 1 | **CFG reconstruction is a hardcoded template, not a real algorithm** — any function with nested control flow, multiple loops, or mixed constructs produces incorrect results (only affects `explain` CLI command, not reconstruction backends) | Major |
+| 2 | **SSA lifting is a hardcoded template** — phi node count is `bool(has_if && has_else)`, not computed from actual data flow (only affects `explain` CLI command) | Major |
 | 3 | **O(n²) memory in tree edit distance** with no node-count limit — a contract with 10k AST nodes allocates ~800MB, 50k nodes → 20GB | Major |
 | 4 | **Silent failure in SorobanKnowledge JSON loading** — corrupted embedded data silently degrades to empty knowledge base with no diagnostic | Major |
 | 5 | **Test suite is breadth-first, depth-last** — 15 test suites but many have only 1–3 tests; no property-based testing, no fuzzing, no roundtrip tests | Major |
 
 ### Release Blockers
 
-1. `build_cfg_summary()` and `lift_function_to_ssa_summary()` must be replaced with real implementations, or clearly documented as sketch/stub APIs not suitable for production analysis.
-2. Tree edit distance must enforce an AST node count ceiling to prevent OOM on large contracts.
+1. Tree edit distance must enforce an AST node count ceiling to prevent OOM on large contracts.
+
+### Near-Blockers (Major)
+
+1. `build_cfg_summary()` and `lift_function_to_ssa_summary()` must be replaced with real implementations, or clearly documented as sketch/stub APIs. They are currently only consumed by the `explain` CLI command (not by the reconstruction backends), limiting blast radius — but the API names are misleading and will trap future consumers.
+2. Backend modules (rust-backend, wat-backend) have zero dedicated test coverage.
 
 ---
 
 ## 2. Correctness Issues
 
-### 2.1 CFG Reconstruction Is a Template Dispatcher — **Blocker**
+### 2.1 CFG Reconstruction Is a Template Dispatcher — **Major**
 
 **File:** `crates/sorcat-core/src/lib.rs:373-498`
 
@@ -51,9 +55,9 @@ The project demonstrates strong discipline in determinism, input validation, and
 - `br_table` (switch) is completely ignored in CFG construction
 - Block labels are synthetic and disconnected from actual instruction offsets
 
-This is not a "simplified" CFG — it's a lie. Any downstream consumer (e.g., the Rust backend) that depends on CFG structure for correctness will produce wrong output.
+This is not a "simplified" CFG — it's a template. **Mitigating factor:** Neither `sorcat-rust-backend` nor `sorcat-wat-backend` uses `build_cfg_summary`. It is only consumed by the `explain` CLI command (`crates/sorcat-cli/src/lib.rs:242`). The core reconstruction pipeline is unaffected. However, the API name is misleading and will trap future consumers.
 
-### 2.2 SSA Lifting Is a Template Dispatcher — **Blocker**
+### 2.2 SSA Lifting Is a Template Dispatcher — **Major**
 
 **File:** `crates/sorcat-core/src/lib.rs:500-552`
 
@@ -67,6 +71,8 @@ This is not a "simplified" CFG — it's a lie. Any downstream consumer (e.g., th
 - No actual def-use chain analysis occurs
 - No register/value numbering
 - The SSA summary is cosmetic, not analytical
+
+**Mitigating factor:** Like CFG, this is only consumed by the `explain` CLI command, not by the reconstruction backends.
 
 ### 2.3 Instruction-to-SSA Mapping Is Lossy — **Major**
 
@@ -171,7 +177,7 @@ For two trees with N nodes each, this allocates N² × 8 bytes. No limit is impo
 | 10,000 | ~800 MB |
 | 50,000 | ~20 GB |
 
-Additionally, `compute_forest_distance()` allocates a separate 2D matrix per keyroot pair, compounding memory pressure.
+Additionally, `compute_forest_distance()` allocates a separate 2D matrix per keyroot pair, though these inner matrices are bounded by subtree sizes rather than full n².
 
 **Recommendation:** Impose a maximum AST node count (e.g., 5,000) and reject or approximate scoring for larger inputs.
 
@@ -213,9 +219,9 @@ These are checked at parse time before any unbounded allocation.
 
 **Recommendation:** Panic or return `Result` on embedded data corruption — this is a compile-time invariant that should never silently fail.
 
-### 6.3 Path Traversal Not Validated at CLI Boundary — **Minor**
+### 6.3 Path Traversal Not Validated at CLI Boundary — **Informational (Not a Real Risk)**
 
-The CLI accepts file paths via command-line arguments without validating for path traversal attacks (e.g., `../../etc/passwd`). The corpus module validates relative paths within manifest processing, but the CLI entry points do not. This is low risk for a CLI tool (the user controls their own paths) but would be a concern if the CLI were wrapped in a service.
+~~The CLI accepts file paths via command-line arguments without validating for path traversal.~~ **On review, this is a false positive for a CLI tool.** The user already has filesystem access; CLI path traversal is not a vulnerability. This would only matter if the CLI were wrapped in a service, which is speculative. Retained for completeness only.
 
 ### 6.4 Error Messages Expose File Paths — **Minor**
 
@@ -335,9 +341,9 @@ The CI pipeline runs tests and corpus scoring but lacks:
 - MSRV enforcement — `rust-version = "1.87"` is specified but not tested
 - No caching of Cargo dependencies (rebuild from scratch every run)
 
-### 9.2 No Release Build Verification — **Minor**
+### 9.2 No Release Build Verification — **Informational**
 
-CI only builds in debug mode (`cargo test` defaults to debug). Release-mode optimizations could expose different behavior (e.g., integer overflow behavior in debug vs release). Adding `cargo test --release` would catch these.
+CI only builds in debug mode (`cargo test` defaults to debug). ~~Release-mode optimizations could expose different behavior (e.g., integer overflow behavior in debug vs release).~~ **On review, this is a false positive.** The codebase uses `checked_add`, `checked_mul`, and explicit `u32_to_usize`/`usize_to_u32` helpers throughout — it does not rely on bare arithmetic operators that differ between debug (panic) and release (wrap). Adding `cargo test --release` is still good practice for catching optimization-related issues, but there is no concrete overflow risk here.
 
 ### 9.3 Dependency Versions Are Pinned via Lockfile — **Positive Finding**
 
@@ -384,9 +390,9 @@ No high-risk or unmaintained dependencies. Supply chain risk is low.
 
 ### What Must Be Fixed Before Production
 
-1. **Replace CFG and SSA template dispatchers with real implementations**, or clearly mark them as stubs and remove any claim of "reconstruction" or "lifting" from the public API. The current code is technically correct for the narrow test cases that exist, but will produce wrong output for any non-trivial input.
+1. **Add AST node count limits** to the scoring pipeline to prevent OOM on large contracts. This is the only true blocker.
 
-2. **Add AST node count limits** to the scoring pipeline to prevent OOM on large contracts.
+2. **Rename or document CFG/SSA APIs as templates/sketches**, or replace with real implementations. These only affect the `explain` CLI command today (not the reconstruction backends), but the misleading API names will trap future consumers.
 
 3. **Add tests for the backends** (rust-backend, wat-backend). These are the user-facing output modules and currently have zero dedicated test coverage.
 
@@ -394,8 +400,18 @@ No high-risk or unmaintained dependencies. Supply chain risk is low.
 
 ### Honest Assessment
 
-This codebase is a well-structured prototype that has been optimized for passing its own test suite rather than for correctness on arbitrary input. The template-based CFG/SSA implementation is the clearest example: it passes tests because the tests were written to validate the templates. A real production deployment against diverse Soroban contracts would expose these limitations immediately.
+This codebase is well-structured with strong defensive coding practices. The WASM parser, Soroban section decoder, knowledge base, scoring pipeline, and corpus validation are all production-quality.
 
-The scoring infrastructure and corpus management are production-quality. The WASM parser is solid. The error handling is exemplary. But the analysis core — the thing that makes this a "decompiler" rather than a "disassembler with annotations" — is not yet implemented.
+The CFG/SSA template implementations are the weakest components but their impact is contained: they only affect the `explain` CLI command, not the core `decompile`/`score`/`diff` pipeline. The original audit incorrectly implied the reconstruction backends depended on these — they don't. The Rust backend independently parses WASM and operates directly on instructions and custom sections.
 
-**Recommended action:** Do not ship as a production decompiler until CFG/SSA are replaced with real algorithms. The tool is shippable today as a WASM inspector / Soroban metadata viewer with deterministic Rust sketch output.
+The tool is shippable for its primary use cases (decompilation, scoring, diffing). The `explain` command should either be documented as producing approximate structural analysis, or the underlying algorithms should be replaced.
+
+### False Positive Corrections (Self-Review)
+
+| Original Finding | Correction |
+|------------------|------------|
+| §2.1/2.2: CFG/SSA as "Blocker" | Downgraded to **Major** — only affects `explain` CLI command, not reconstruction backends |
+| §2.1: "the Rust backend depends on CFG" | **False** — rust-backend does not import or use `CfgSummary`/`SsaSummary` |
+| §6.3: Path traversal as "Minor" | Downgraded to **Informational** — not a vulnerability for CLI tools |
+| §9.2: Debug vs release overflow risk | **False positive** — codebase uses checked arithmetic throughout |
+| §5.1: "compounding memory pressure" from inner matrices | Slightly overstated — inner matrices bounded by subtree size, not full n² |
