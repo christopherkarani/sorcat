@@ -1,5 +1,7 @@
 # sorcat
 
+![Sorcat Banner](sorcat_thumbnail.png)
+
 Soroban specialized reverse engineering toolchain.
 
 ## Overview
