@@ -2,11 +2,9 @@
 
 Soroban specialized reverse engineering toolchain.
 
-## Plan
+## Overview
 
-- Immutable plan: `docs/plans/sorcat-implementation-plan-v1.md`
-- Task documents: `docs/tasks/`
-- Reviews and gaps: `docs/reviews/`, `docs/gaps/`
+Sorcat is a specialized reverse engineering toolchain for Soroban smart contracts. It decompiles WebAssembly binaries into human-readable representations, with particular focus on the Soroban environment's unique constructs.
 
 ## Workspace
 
@@ -83,7 +81,7 @@ Where to inspect evidence files:
 
 Authoritative compliance review snapshot:
 
-1. `docs/reviews/review-round-7.md`
+1. Internal review documents (maintained locally)
 
 ## Capability Matrix (Q1 2026 Spec)
 
@@ -105,5 +103,4 @@ Authoritative compliance review snapshot:
 1. `LICENSE`
 2. `CONTRIBUTING.md`
 3. `CHANGELOG.md`
-4. `docs/security/untrusted-wasm-review-v1.md`
-5. `.github/workflows/ci.yml`
+4. `.github/workflows/ci.yml`
